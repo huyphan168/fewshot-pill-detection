@@ -1,0 +1,58 @@
+VERSION: 2
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  WEIGHTS: "checkpoints/emed/faster_rcnn/faster_drcnn_R_50_base/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  BACKBONE:
+    NAME: "build_resnet_fpn_backbone"
+    FREEZE: False
+    FREEZE_AT: 5 
+  PROPOSAL_GENERATOR:
+    FREEZE: False
+  RESNETS:
+    OUT_FEATURES: ["res2", "res3", "res4", "res5"]
+  FPN:
+    IN_FEATURES: ["res2", "res3", "res4", "res5"]
+  ANCHOR_GENERATOR:
+    SIZES: [[32], [64], [128], [256], [512]]  # One size for each in feature map
+    ASPECT_RATIOS: [[0.5, 1.0, 2.0]]  # Three aspect ratios (same for all in feature maps)
+  RPN:
+    IN_FEATURES: ["p2", "p3", "p4", "p5", "p6"]
+    PRE_NMS_TOPK_TRAIN: 2000  # Per FPN level
+    PRE_NMS_TOPK_TEST: 1000  # Per FPN level
+    # Detectron1 uses 2000 proposals per-batch,
+    # (See "modeling/rpn/rpn_outputs.py" for details of this legacy issue)
+    # which is approximately 1000 proposals per-image since the default batch size for FPN is 2.
+    POST_NMS_TOPK_TRAIN: 2000
+    POST_NMS_TOPK_TEST: 1000
+  ROI_HEADS:
+    NAME: "ContrastiveROIHeads"
+    NUM_CLASSES: 267
+    FREEZE_FEAT: False
+    OUTPUT_LAYER: "CosineSimOutputLayers"
+    IN_FEATURES: ["p2", "p3", "p4", "p5"]
+    BATCH_SIZE_PER_IMAGE: 256
+  ROI_BOX_HEAD:
+    NAME: "FastRCNNConvFCHead"
+    NUM_FC: 2
+    POOLER_RESOLUTION: 7
+    CONTRASTIVE_BRANCH:
+      TEMPERATURE: 0.2
+      LOSS_WEIGHT: 0.5
+      DECAY:
+        ENABLED: True
+        STEPS: [6000, 10000]
+        RATE: 0.5
+      IOU_THRESHOLD: 0.6
+SOLVER:
+  IMS_PER_BATCH: 12
+  BASE_LR: 0.001
+  STEPS: (8000, 12000)
+  MAX_ITER: 12000
+  CHECKPOINT_PERIOD: 4000
+DATASETS:
+  TRAIN: ('emed_train_all_13shot_seed1',)
+  TEST: ('emed_test_all',)
+OUTPUT_DIR: "/home/aiotlab/projects/huyvinuni/RFC/few-shot-object-detection/checkpoints/emed/faster_rcnn/fsce_R_50_ft_all_13shot"

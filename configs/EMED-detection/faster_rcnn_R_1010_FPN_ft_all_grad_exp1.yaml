@@ -1,0 +1,28 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  META_ARCHITECTURE: GeneralizedDecoupledRCNN
+  GDL:
+    rpn_scale: 0.0
+    rcnn_scale: 0.01
+  WEIGHTS: "few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_rcnn_R_101_FPN_base_grad_exp1/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 101
+  ROI_HEADS:
+    NUM_CLASSES: 267
+    FREEZE_FEAT: False
+  BACKBONE:
+    FREEZE: False
+  PROPOSAL_GENERATOR:
+    FREEZE: False
+DATASETS:
+  TRAIN: ('emed_train_all_13shot_seed1',)
+  TEST: ('emed_test_all',)
+SOLVER:
+  IMS_PER_BATCH: 16
+  BASE_LR: 0.01
+  STEPS: (10000,)
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 5000
+  WARMUP_ITERS: 100 
+OUTPUT_DIR: "few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_rcnn_R_101_FPN_ft_all_grad_exp1"

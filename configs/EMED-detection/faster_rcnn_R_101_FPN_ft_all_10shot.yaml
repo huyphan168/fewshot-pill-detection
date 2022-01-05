@@ -1,0 +1,25 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  WEIGHTS: "few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_rcnn_R_101_FPN_base/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 101
+  ROI_HEADS:
+    NUM_CLASSES: 267
+    OUTPUT_LAYER: "CosineSimOutputLayers"
+    FREEZE_FEAT: True
+  BACKBONE:
+    FREEZE: True
+  PROPOSAL_GENERATOR:
+    FREEZE: True
+DATASETS:
+  TRAIN: ('emed_train_all_10shot_seed1',)
+  TEST: ('emed_test_all',)
+SOLVER:
+  IMS_PER_BATCH: 12
+  BASE_LR: 0.001
+  STEPS: (10000,)
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 5000
+  WARMUP_ITERS: 10
+OUTPUT_DIR: "few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_rcnn_R_101_FPN_ft_fc_all_10shot"

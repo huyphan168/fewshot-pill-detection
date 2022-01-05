@@ -1,0 +1,32 @@
+VERSION: 2
+MODEL:
+  META_ARCHITECTURE: "GeneralizedDecoupledRCNN"
+  WEIGHTS: "checkpoints/emed/faster_rcnn/faster_drcnn_R_50_base/model_reset_surgery.pth"
+  MASK_ON: False
+  BACKBONE: 
+    FREEZE: False
+  RESNETS:
+    DEPTH: 50
+  PROPOSAL_GENERATOR:
+    ENABLE_DECOUPLE: True
+    BACKWARD_SCALE: 0.0
+    FREEZE: False
+  ROI_HEADS:
+    NAME: "Res5ROIHeads"
+    NUM_CLASSES: 267
+    FREEZE_FEAT: False
+    CLS_DROPOUT: True
+    ENABLE_DECOUPLE: True
+    BACKWARD_SCALE: 0.01
+  RPN:
+    PRE_NMS_TOPK_TEST: 6000
+    POST_NMS_TOPK_TEST: 1000
+DATASETS:
+  TRAIN: ('emed_train_all_13shot_seed1',)
+  TEST: ('emed_test_all',)
+SOLVER:
+  IMS_PER_BATCH: 12
+  STEPS: (8000, 12000)
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 4000
+OUTPUT_DIR: "/home/aiotlab/projects/huyvinuni/RFC/few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_drcnn_R_50_ft_all_13shot"

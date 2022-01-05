@@ -1,0 +1,21 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  META_ARCHITECTURE: GeneralizedDecoupledRCNN
+  GDL:
+      rpn_scale: 0.1
+      rcnn_scale: 0.75
+  WEIGHTS: "few-shot-object-detection/checkpoints/R-101.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 101
+  ROI_HEADS:
+    NUM_CLASSES: 246
+DATASETS:
+  TRAIN: ('emed_train_base',)
+  TEST: ('emed_test_base',)
+SOLVER:
+  IMS_PER_BATCH: 16
+  STEPS: (15000, 20000)
+  MAX_ITER: 25000
+  CHECKPOINT_PERIOD: 5000
+OUTPUT_DIR: "few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_rcnn_R_101_FPN_base_grad"

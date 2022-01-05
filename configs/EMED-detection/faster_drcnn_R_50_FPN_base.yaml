@@ -1,0 +1,27 @@
+VERSION: 2
+MODEL:
+  META_ARCHITECTURE: "GeneralizedDecoupledRCNN"
+  WEIGHTS: "checkpoints/R-50.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  PROPOSAL_GENERATOR:
+    ENABLE_DECOUPLE: True
+    BACKWARD_SCALE: 0.0
+  ROI_HEADS:
+    NAME: "Res5ROIHeads"
+    NUM_CLASSES: 246
+    ENABLE_DECOUPLE: True
+    BACKWARD_SCALE: 0.75
+  RPN:
+    PRE_NMS_TOPK_TEST: 6000
+    POST_NMS_TOPK_TEST: 1000
+DATASETS:
+  TRAIN: ('emed_train_base',)
+  TEST: ('emed_test_base',)
+SOLVER:
+  IMS_PER_BATCH: 12
+  STEPS: (10000, 20000)
+  MAX_ITER: 25000
+  CHECKPOINT_PERIOD: 10000
+OUTPUT_DIR: "/home/aiotlab/projects/huyvinuni/RFC/few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_drcnn_R_50_base"
