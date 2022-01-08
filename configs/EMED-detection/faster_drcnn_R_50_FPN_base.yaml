@@ -20,8 +20,8 @@ DATASETS:
   TRAIN: ('emed_train_base',)
   TEST: ('emed_test_base',)
 SOLVER:
-  IMS_PER_BATCH: 12
+  IMS_PER_BATCH: 4
   STEPS: (10000, 20000)
   MAX_ITER: 25000
   CHECKPOINT_PERIOD: 10000
-OUTPUT_DIR: "/home/aiotlab/projects/huyvinuni/RFC/few-shot-object-detection/checkpoints/emed/faster_rcnn/faster_drcnn_R_50_base"
+OUTPUT_DIR: "checkpoints/emed/faster_rcnn/faster_drcnn_R_50_base"

@@ -22,10 +22,10 @@ def parse_args():
                              'base detector. randinit = randomly initialize '
                              'novel weights.')
     # Targets
-    parser.add_argument('--param-name', type=str, nargs='+',
-                        default=['roi_heads.box_predictor.cls_score',
-                                 'roi_heads.box_predictor.bbox_pred'],
-                        help='Target parameter names')
+    # parser.add_argument('--param-name', type=str, nargs='+',
+    #                     default=['roi_heads.box_predictor.cls_score',
+    #                              'roi_heads.box_predictor.bbox_pred'],
+    #                     help='Target parameter names')
     parser.add_argument('--tar-name', type=str, default='model_reset',
                         help='Name of the new ckpt')
     # Dataset
@@ -35,6 +35,9 @@ def parse_args():
                         help='For LVIS models')
     parser.add_argument('--emed', action='store_true',
                         help='For EMED models')
+    parser.add_argument('--model', type=str, default='sparse_rcnn',
+                        help='Model name')
+    return parser.parse_args()
     args = parser.parse_args()
     return args
 
@@ -203,9 +206,9 @@ if __name__ == '__main__':
     elif args.emed:
         # Emed
         import pickle as pkl
-        name2id = pkl.load(open("/mnt/disk1/huyvinuni/datasets/emed/name2id.pkl","rb"))
-        base_classes = pkl.load(open("/mnt/disk1/huyvinuni/datasets/emed/base_names.pkl","rb"))
-        novel_classes = pkl.load(open("/mnt/disk1/huyvinuni/datasets/emed/few_shot_names.pkl","rb"))
+        name2id = pkl.load(open("/home/vishc1/datasets/emed/name2id.pkl","rb"))
+        base_classes = pkl.load(open("/home/vishc1/datasets/emed/base_names.pkl","rb"))
+        novel_classes = pkl.load(open("/home/vishc1/datasets/emed/few_shot_names.pkl","rb"))
         BASE_CLASSES = [name2id[name] for name in base_classes]
         NOVEL_CLASSES = [name2id[name] for name in novel_classes]
         ALL_CLASSES = sorted(BASE_CLASSES + NOVEL_CLASSES)
@@ -258,7 +261,10 @@ if __name__ == '__main__':
     else:
         # VOC
         TAR_SIZE = 20
-
+    if args.model == "sparse_rcnn":
+        args.param_name = ["head.head_series.5.class_logits", "head.head_series.5.bboxes_delta"]
+    if args.model == "rcnn":
+        args.param_name = ['roi_heads.box_predictor.cls_score','roi_heads.box_predictor.bbox_pred']
     if args.method == 'combine':
         combine_ckpts(args)
     else:

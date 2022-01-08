@@ -4,7 +4,7 @@ from typing import List
 # adding additional default values built on top of the default values in detectron2
 
 _CC = _C
-
+_CC.TRAINER = "Trainer"
 # FREEZE Parameters
 _CC.MODEL.ROI_HEADS.CONTRASTIVE_BRANCH = CN()
 _CC.MODEL.BACKBONE.FREEZE = False

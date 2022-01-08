@@ -456,10 +456,10 @@ def _get_pascal_voc_fewshot_instances_meta():
 
 def _get_emed_fewshot_meta():
     import pickle as pkl
-    name2id = pkl.load(open("/mnt/disk1/huyvinuni/datasets/emed/name2id.pkl","rb"))
+    name2id = pkl.load(open("/home/vishc1/datasets/emed/name2id.pkl","rb"))
     metadata = {}
-    base_classes = pkl.load(open("/mnt/disk1/huyvinuni/datasets/emed/base_names.pkl","rb"))
-    novel_classes = pkl.load(open("/mnt/disk1/huyvinuni/datasets/emed/few_shot_names.pkl","rb"))
+    base_classes = pkl.load(open("/home/vishc1/datasets/emed/base_names.pkl","rb"))
+    novel_classes = pkl.load(open("/home/vishc1/datasets/emed/few_shot_names.pkl","rb"))
     base_ids = [name2id[name] for name in base_classes]
     novel_ids = [name2id[name] for name in novel_classes]
     classes = base_classes + novel_classes

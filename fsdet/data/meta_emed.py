@@ -22,7 +22,7 @@ def load_emed_json(imgdir, jsondir, metadata, dataset_name):
     if is_shots:
         img_ids = {}
         # split_dir = os.path.join("datasets", "cocosplit")
-        split_dir = "/mnt/disk1/huyvinuni/datasets/emed/emedsplit"
+        split_dir = "/home/vishc1/datasets/emed/emedsplit"
         if "seed" in dataset_name:
             shot = dataset_name.split("_")[-2].split("shot")[0]
             seed = int(dataset_name.split("_seed")[-1])
@@ -141,7 +141,7 @@ def register_meta_emed(name, metadata, imgdir, jsondir):
     MetadataCatalog.get(name).set(
         image_root=imgdir,
         evaluator_type="emed",
-        dirname="/mnt/disk1/huyvinuni/datasets/emed",
+        dirname="/home/vishc1/datasets/emed/",
         **metadata,
     )
 

@@ -16,6 +16,11 @@ def add_custom_config(cfg, model_name):
         return add_sparsercnn_config(cfg)
     elif model_name == "fsce":
         return add_fsce_config(cfg)
+    elif model_name == "heur":
+        return add_heur_config(cfg)
+
+def add_heur_config(cfg):
+    return cfg
 
 def add_fsdet_config(cfg):
     return cfg
@@ -67,6 +72,7 @@ def add_gdl_config(cfg):
 
     cfg.MODEL.BACKBONE.FREEZE_AT = 3
     return cfg
+
 
 def add_sparsercnn_config(cfg):
     """

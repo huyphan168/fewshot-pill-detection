@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 # avoid conflicting with the existing GeneralizedRCNN module in Detectron2
 from .build import META_ARCH_REGISTRY
 
-__all__ = ["GeneralizedRCNN", "GeneralizedDecoupledRCNN"]
+__all__ = ["GeneralizedRCNN", "GeneralizedDecoupledRCNN", "GeneralizedPriorRCNN"]
 
 
 @META_ARCH_REGISTRY.register()

@@ -15,8 +15,9 @@ You may want to write your own script with your datasets and other customization
 """
 
 import sys
-sys.path.insert(0,"/home/aiotlab/projects/huyvinuni/RFC/few-shot-object-detection")
-
+import numpy as np
+import copy
+import logging
 from fsdet.config import get_cfg, set_global_cfg, add_custom_config
 from fsdet.engine import DefaultTrainer, default_argument_parser, default_setup
 
@@ -25,50 +26,8 @@ import os
 from detectron2.checkpoint import DetectionCheckpointer
 from detectron2.data import MetadataCatalog
 from detectron2.engine import launch
-from fsdet.evaluation import (
-    COCOEvaluator, DatasetEvaluators, LVISEvaluator, PascalVOCDetectionEvaluator, EMEDEvaluator , verify_results)
-
-
-class Trainer(DefaultTrainer):
-    """
-    We use the "DefaultTrainer" which contains a number pre-defined logic for
-    standard training workflow. They may not work for you, especially if you
-    are working on a new research project. In that case you can use the cleaner
-    "SimpleTrainer", or write your own training loop.
-    """
-
-    @classmethod
-    def build_evaluator(cls, cfg, dataset_name, output_folder=None):
-        """
-        Create evaluator(s) for a given dataset.
-        This uses the special metadata "evaluator_type" associated with each builtin dataset.
-        For your own dataset, you can simply create an evaluator manually in your
-        script and do not have to worry about the hacky if-else logic here.
-        """
-        if output_folder is None:
-            output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
-        evaluator_list = []
-        evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
-        if evaluator_type == "coco":
-            evaluator_list.append(
-                COCOEvaluator(dataset_name, cfg, True, output_folder)
-            )
-        if evaluator_type == "pascal_voc":
-            return PascalVOCDetectionEvaluator(dataset_name)
-        if evaluator_type == "lvis":
-            return LVISEvaluator(dataset_name, cfg, True, output_folder)
-        if evaluator_type == "emed":
-            return EMEDEvaluator(dataset_name, cfg, True, output_folder)
-        if len(evaluator_list) == 0:
-            raise NotImplementedError(
-                "no Evaluator for the dataset {} with the type {}".format(
-                    dataset_name, evaluator_type
-                )
-            )
-        if len(evaluator_list) == 1:
-            return evaluator_list[0]
-        return DatasetEvaluators(evaluator_list)
-
+from fsdet.engine.build import build_trainer
+from fsdet.evaluation import verify_results
 
 def setup(args):
     """
@@ -88,13 +47,13 @@ def setup(args):
 
 def main(args):
     cfg = setup(args)
-
+    trainer = build_trainer(cfg)
     if args.eval_only:
-        model = Trainer.build_model(cfg)
+        model = trainer.build_model(cfg)
         DetectionCheckpointer(model, save_dir=cfg.OUTPUT_DIR).resume_or_load(
             cfg.MODEL.WEIGHTS, resume=args.resume
         )
-        res = Trainer.test(cfg, model)
+        res = trainer.test(cfg, model)
         if comm.is_main_process():
             verify_results(cfg, res)
         return res
@@ -103,7 +62,6 @@ def main(args):
     If you'd like to do anything fancier than the standard training logic,
     consider writing your own training loop or subclassing the trainer.
     """
-    trainer = Trainer(cfg)
     trainer.resume_or_load(resume=args.resume)
     return trainer.train()
 
