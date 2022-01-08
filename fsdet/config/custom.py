@@ -108,6 +108,10 @@ def add_sparsercnn_config(cfg):
     cfg.MODEL.SparseRCNN.ALPHA = 0.25
     cfg.MODEL.SparseRCNN.GAMMA = 2.0
     cfg.MODEL.SparseRCNN.PRIOR_PROB = 0.01
+    # Freezing.
+    cfg.MODEL.BACKBONE.FREEZE = False
+    cfg.MODEL.SparseRCNN.INIT_PROP_FREEZE = False
+    cfg.MODEL.SparseRCNN.HEAD_FREEZE_EXCP6 = False
 
     # Optimizer.
     cfg.SOLVER.OPTIMIZER = "ADAMW"

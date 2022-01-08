@@ -1,11 +1,12 @@
 VERSION: 2
 MODEL:
   META_ARCHITECTURE: "SparseRCNN"
-  WEIGHTS: "checkpoints/emed/sparse_rcnn/sparse_rcnn_R_50_base/model_final.pth"
+  WEIGHTS: "checkpoints/emed/sparse_rcnn/sparse_rcnn_R_50_base/model_reset_surgery.pth"
   PIXEL_MEAN: [123.675, 116.280, 103.530]
   PIXEL_STD: [58.395, 57.120, 57.375]
   BACKBONE:
     NAME: "build_resnet_fpn_backbone"
+    FREEZE: True
   RESNETS:
     OUT_FEATURES: ["res2", "res3", "res4", "res5"]
     DEPTH: 50
@@ -20,12 +21,14 @@ MODEL:
     POOLER_SAMPLING_RATIO: 2
   SparseRCNN:
     NUM_PROPOSALS: 100
-    NUM_CLASSES: 246
+    NUM_CLASSES: 267
+    INIT_PROP_FREEZE: True
+    HEAD_FREEZE_EXCP6: True
 SOLVER:
-  IMS_PER_BATCH: 8
-  BASE_LR: 0.000025
-  STEPS: (10000, 25000)
-  MAX_ITER: 30000 
+  IMS_PER_BATCH: 15
+  BASE_LR: 0.000015
+  STEPS: (10000, 15000)
+  MAX_ITER: 18000
   WARMUP_FACTOR: 0.01
   WARMUP_ITERS: 1000
   WEIGHT_DECAY: 0.0001
@@ -46,6 +49,6 @@ INPUT:
     SIZE: (384, 600)
   FORMAT: "RGB"
 DATASETS:
-  TRAIN: ('emed_test_base',)
-  TEST: ('emed_test_base',)
-OUTPUT_DIR: "checkpoints/emed/sparse_rcnn/sparse_rcnn_R_50_base"
+  TRAIN: ('emed_train_all_13shot_seed1',)
+  TEST: ('emed_test_all',)
+OUTPUT_DIR: "checkpoints/emed/sparse_rcnn/sparse_rcnn_R_50_ft_fc_13shot"

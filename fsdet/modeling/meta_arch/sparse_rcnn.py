@@ -205,6 +205,7 @@ class SparseRCNN(nn.Module):
 
         # Build Backbone.
         self.backbone = build_backbone(cfg)
+
         self.size_divisibility = self.backbone.size_divisibility
         
         # Build Proposals.
@@ -252,6 +253,27 @@ class SparseRCNN(nn.Module):
         self.normalizer = lambda x: (x - pixel_mean) / pixel_std
         self.to(self.device)
 
+        #Freeze backbone
+        if cfg.MODEL.BACKBONE.FREEZE:
+            for p in self.backbone.parameters():
+                p.requires_grad = False
+            print("froze backbone parameters")
+        if cfg.MODEL.SparseRCNN.INIT_PROP_FREEZE:
+            for p in self.init_proposal_features.parameters():
+                p.requires_grad = False
+            for p in self.init_proposal_boxes.parameters():
+                p.requires_grad = False
+            print("froze init proposal (proposal features and boxes) parameters")
+        
+        if cfg.MODEL.SparseRCNN.HEAD_FREEZE_EXCP6:
+            for p in self.head.parameters():
+                if p.requires_grad:
+                    p.requires_grad = False
+            for name, module in self.head.head_series[5].named_children():
+                if name in ["class_logits", "bboxes_delta"]:
+                    for p in module.parameters():
+                        p.requires_grad = True
+            print("froze dynamic head parameters except for the 6th layer")
 
     def forward(self, batched_inputs, do_postprocess=True):
         """
