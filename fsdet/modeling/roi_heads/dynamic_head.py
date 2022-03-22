@@ -182,7 +182,7 @@ class RCNNHead(nn.Module):
             proposal_boxes.append(Boxes(bboxes[b]))
         roi_features = pooler(features, proposal_boxes)            
         roi_features = roi_features.view(N * nr_boxes, self.d_model, -1).permute(2, 0, 1)        
-
+    
         # self_att.
         pro_features = pro_features.view(N, nr_boxes, self.d_model).permute(1, 0, 2)
         pro_features2 = self.self_attn(pro_features, pro_features, value=pro_features)[0]

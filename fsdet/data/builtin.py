@@ -284,25 +284,25 @@ def register_all_emed(root="/home/vishc1/datasets"):
     # register meta datasets
     METASPLITS = [
         (
-            "emed_train_all",
-            "emed/all_train/images",
-            "emed/all_train/labels",
+            "vaipe_train_all",
+            "vaipe/train/images",
+            "vaipe/annotations/instances_train.json",
         ),
         (
-            "emed_train_base",
-            "emed/base_train/images",
-            "emed/base_train/labels",
+            "vaipe_train_base",
+            "vaipe/train/images",
+            "vaipe/annotations/instances_train.json",
         ),
-        ("emed_test_base", "emed/base_test/images", "emed/base_test/labels"),
-        ("emed_test_all", "emed/all_test/images", "emed/all_test/labels"),
+        ("vaipe_test_base", "vaipe/test/images", "vaipe/annotations/instances_test.json"),
+        ("vaipe_test_all", "vaipe/test/images", "vaipe/annotations/instances_test.json"),
     ]
 
     for prefix in ["all"]:
         for shot in [5, 10, 13]:
-            for seed in range(1,2):
-                seed = "_seed{}".format(seed)
-                name = "emed_train_{}_{}shot{}".format(prefix, shot, seed)
-                METASPLITS.append((name, "emed/all_train/images", ""))
+            # for seed in range(1,2):
+                # seed = "_seed{}".format(seed)
+                name = "vaipe_train_{}_{}shot".format(prefix, shot)
+                METASPLITS.append((name, "vaipe/train/images", ""))
     for name, imgdir, jsondir in METASPLITS:
         register_meta_emed(
             name,

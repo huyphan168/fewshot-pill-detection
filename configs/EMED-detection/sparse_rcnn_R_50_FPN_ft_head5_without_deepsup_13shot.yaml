@@ -10,7 +10,6 @@ MODEL:
   RESNETS:
     OUT_FEATURES: ["res2", "res3", "res4", "res5"]
     DEPTH: 50
-    STRIDE_IN_1X1: False
   FPN:
     IN_FEATURES: ["res2", "res3", "res4", "res5"]
   ROI_HEADS:

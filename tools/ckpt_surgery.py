@@ -206,9 +206,9 @@ if __name__ == '__main__':
     elif args.emed:
         # Emed
         import pickle as pkl
-        name2id = pkl.load(open("/home/vishc1/datasets/emed/name2id.pkl","rb"))
-        base_classes = pkl.load(open("/home/vishc1/datasets/emed/base_names.pkl","rb"))
-        novel_classes = pkl.load(open("/home/vishc1/datasets/emed/few_shot_names.pkl","rb"))
+        name2id = pkl.load(open("/home/vishc1/datasets/vaipe/name2id.pkl","rb"))
+        base_classes = pkl.load(open("/home/vishc1/datasets/vaipe/base_names.pkl","rb"))
+        novel_classes = pkl.load(open("/home/vishc1/datasets/vaipe/few_shot_names.pkl","rb"))
         BASE_CLASSES = [name2id[name] for name in base_classes]
         NOVEL_CLASSES = [name2id[name] for name in novel_classes]
         ALL_CLASSES = sorted(BASE_CLASSES + NOVEL_CLASSES)

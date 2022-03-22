@@ -25,7 +25,6 @@ def generate_seeds(args):
     i = 1
     if True:
         for c in CLASS2ID.keys():
-            print(c)
             #building img_ids with the keys are img_ids containing boxs of class c, the values is the the boxes of class c belonging to that image
             img_ids = {}
             for a in anno[c]:

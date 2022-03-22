@@ -61,13 +61,20 @@ class EMEDEvaluator(DatasetEvaluator):
         self._base_classes = [name2id[x] for x in self._metadata.base_classes]
         self._novel_classes = [name2id[x] for x in self._metadata.novel_classes]
 
-        json_file = output_dir + "/dataset_coco_convert.json"
+        # json_file = output_dir + "/dataset_coco_convert.json"
+        # with contextlib.redirect_stdout(io.StringIO()):
+        #     self._coco_api = COCO(json_file)
+        json_file = PathManager.get_local_path(self._metadata.json_file)
         with contextlib.redirect_stdout(io.StringIO()):
             self._coco_api = COCO(json_file)
 
         # Test set json files do not contain annotations (evaluation must be
         # performed using the COCO evaluation server).
-        print("vac aav", "annotations" in self._coco_api.dataset)
+        self._do_evaluation = "annotations" in self._coco_api.dataset
+
+        # Test set json files do not contain annotations (evaluation must be
+        # performed using the COCO evaluation server).
+
         self._do_evaluation = "annotations" in self._coco_api.dataset
 
     def reset(self):
