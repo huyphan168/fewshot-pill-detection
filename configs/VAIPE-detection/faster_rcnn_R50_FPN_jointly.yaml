@@ -1,0 +1,17 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  WEIGHTS: "checkpoints/R-50.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  ROI_HEADS:
+    NUM_CLASSES: 262
+DATASETS:
+  TRAIN: ('vaipe_few_all_13',)
+  TEST: ('vaipe_test_all',)
+SOLVER:
+  IMS_PER_BATCH: 8
+  STEPS: (15000, 30000)
+  MAX_ITER: 40000
+  CHECKPOINT_PERIOD: 10000
+OUTPUT_DIR: "checkpoints/vaipe/TFA_fastercnn_jointly_r50"

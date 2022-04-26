@@ -16,10 +16,14 @@ def add_custom_config(cfg, model_name):
         return add_sparsercnn_config(cfg)
     elif model_name == "fsce":
         return add_fsce_config(cfg)
-    elif model_name == "heur":
-        return add_heur_config(cfg)
+    elif model_name == "geo":
+        return add_geo_config(cfg)
 
-def add_heur_config(cfg):
+def add_geo_config(cfg):
+    cfg.MODEL.ROI_BOX_HEAD.NUM_DECONV = 4
+    cfg.MODEL.ROI_BOX_HEAD.EDGE_DIM = 28
+    cfg.MODEL.ROI_BOX_HEAD.TEXTURE_DIM = 28 
+    cfg.MODEL.ROI_HEADS.FREEZE_GEOMETRIC = False
     return cfg
 
 def add_fsdet_config(cfg):

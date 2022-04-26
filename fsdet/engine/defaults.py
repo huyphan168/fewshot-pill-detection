@@ -252,8 +252,13 @@ class DefaultPredictor:
         image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
 
         inputs = {"image": image, "height": height, "width": width}
-        predictions = self.model([inputs])[0]
-        return predictions
+        if not self.cfg.MODEL.VISUALIZATION:
+            predictions = self.model([inputs])[0]
+            return predictions
+        else:
+            predictions, features = self.model([inputs])
+            return predictions, features
+        
 
 
 class DefaultTrainer(SimpleTrainer):

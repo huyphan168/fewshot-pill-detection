@@ -124,7 +124,6 @@ def fast_rcnn_inference_single_image(
     if topk_per_image >= 0:
         keep = keep[:topk_per_image]
     boxes, scores, filter_inds = boxes[keep], scores[keep], filter_inds[keep]
-
     result = Instances(image_shape)
     result.pred_boxes = Boxes(boxes)
     result.scores = scores
@@ -343,7 +342,6 @@ class FastRCNNOutputs(object):
         boxes = self.predict_boxes()
         scores = self.predict_probs()
         image_shapes = self.image_shapes
-
         return fast_rcnn_inference(
             boxes,
             scores,

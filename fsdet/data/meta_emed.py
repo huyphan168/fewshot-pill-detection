@@ -149,6 +149,7 @@ def load_emed_json(json_file, image_root, metadata, dataset_name):
            The results do not have the "image" field.
     """
     is_shots = "shot" in dataset_name
+    is_joint = "few" in dataset_name
     if is_shots:
         fileids = {}
         split_dir = "/home/vishc1/datasets/vaipe/vaipesplit"
@@ -169,6 +170,34 @@ def load_emed_json(json_file, image_root, metadata, dataset_name):
             imgs = coco_api.loadImgs(img_ids)
             anns = [coco_api.imgToAnns[img_id] for img_id in img_ids]
             fileids[idx] = list(zip(imgs, anns))
+    elif is_joint:
+        fileids = {}
+        split_dir = "/home/vishc1/datasets/vaipe/vaipesplit"
+        if "seed" in dataset_name:
+            shot = dataset_name.split("_")[-1]
+            seed = int(dataset_name.split("_seed")[-1])
+            split_dir = os.path.join(split_dir, "seed{}".format(seed))
+        else:
+            shot = dataset_name.split("_")[-1]
+        for idx, cls in enumerate([metadata["name2id"][cls] for cls in metadata["novel_classes"]]):
+            json_file_novel = os.path.join(
+                split_dir, "full_box_{}shot_{}_train.json".format(shot, cls)
+            )
+            json_file_novel = PathManager.get_local_path(json_file_novel)
+            with contextlib.redirect_stdout(io.StringIO()):
+                coco_api = COCO(json_file_novel)
+            img_ids = sorted(list(coco_api.imgs.keys()))
+            imgs = coco_api.loadImgs(img_ids)
+            anns = [coco_api.imgToAnns[img_id] for img_id in img_ids]
+            fileids[idx] = list(zip(imgs, anns))
+        json_file = PathManager.get_local_path(json_file)
+        with contextlib.redirect_stdout(io.StringIO()):
+            coco_api = COCO(json_file)
+        # sort indices for reproducible results
+        img_ids = sorted(list(coco_api.imgs.keys()))
+        imgs = coco_api.loadImgs(img_ids)
+        anns = [coco_api.imgToAnns[img_id] for img_id in img_ids]
+        imgs_anns = list(zip(imgs, anns))
     else:
         json_file = PathManager.get_local_path(json_file)
         with contextlib.redirect_stdout(io.StringIO()):
@@ -208,6 +237,53 @@ def load_emed_json(json_file, image_root, metadata, dataset_name):
             if len(dicts) > int(shot):
                 dicts = np.random.choice(dicts, int(shot), replace=False)
             dataset_dicts.extend(dicts)
+    elif is_joint:
+        for _, fileids_ in fileids.items():
+            dicts = []
+            for (img_dict, anno_dict_list) in fileids_:
+                for anno in anno_dict_list:
+                    record = {}
+                    record["file_name"] = os.path.join(
+                        image_root, img_dict["file_name"]
+                    )
+                    record["height"] = img_dict["height"]
+                    record["width"] = img_dict["width"]
+                    image_id = record["image_id"] = img_dict["id"]
+
+                    assert anno["image_id"] == image_id
+                    assert anno.get("ignore", 0) == 0
+
+                    obj = {key: anno[key] for key in ann_keys if key in anno}
+
+                    obj["bbox_mode"] = BoxMode.XYWH_ABS
+                    obj["category_id"] = id_map[obj["category_id"]]
+                    record["annotations"] = [obj]
+                    dicts.append(record)
+                    
+            if len(dicts) > int(shot):
+                dicts = np.random.choice(dicts, int(shot), replace=False)
+            dataset_dicts.extend(dicts)
+        for (img_dict, anno_dict_list) in imgs_anns:
+            record = {}
+            record["file_name"] = os.path.join(
+                image_root, img_dict["file_name"]
+            )
+            record["height"] = img_dict["height"]
+            record["width"] = img_dict["width"]
+            image_id = record["image_id"] = img_dict["id"]
+
+            objs = []
+            for anno in anno_dict_list:
+                assert anno["image_id"] == image_id
+                assert anno.get("ignore", 0) == 0
+
+                obj = {key: anno[key] for key in ann_keys if key in anno}
+                obj["bbox_mode"] = BoxMode.XYWH_ABS
+                if obj["category_id"] in id_map and obj["category_id"] in metadata["base_dataset_id_to_contiguous_id"]:
+                    obj["category_id"] = id_map[obj["category_id"]]
+                    objs.append(obj)
+            record["annotations"] = objs
+            dataset_dicts.append(record)
     else:
         for (img_dict, anno_dict_list) in imgs_anns:
             record = {}

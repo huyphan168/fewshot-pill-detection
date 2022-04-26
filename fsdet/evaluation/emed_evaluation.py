@@ -73,9 +73,6 @@ class EMEDEvaluator(DatasetEvaluator):
         self._do_evaluation = "annotations" in self._coco_api.dataset
 
         # Test set json files do not contain annotations (evaluation must be
-        # performed using the COCO evaluation server).
-
-        self._do_evaluation = "annotations" in self._coco_api.dataset
 
     def reset(self):
         self._predictions = []

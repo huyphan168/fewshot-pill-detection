@@ -1,17 +1,17 @@
 _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
-  WEIGHTS: "checkpoints/vaipe/TFA_fastercnn_base_r50/model_reset_surgery.pth"
+  WEIGHTS: "checkpoints/vaipe/TFA_fastercnn_base_r50_finetune_13shot_retry_fc/model_final.pth"
   MASK_ON: False
   RESNETS:
     DEPTH: 50
   ROI_HEADS:
     NUM_CLASSES: 262
-    OUTPUT_LAYER: "CosineSimOutputLayers"
     FREEZE_FEAT: True
   BACKBONE:
     FREEZE: True
   PROPOSAL_GENERATOR:
     FREEZE: True
+  VISUALIZATION: True
 DATASETS:
   TRAIN: ('vaipe_train_all_13shot',)
   TEST: ('vaipe_test_all',)
@@ -19,7 +19,7 @@ SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.001
   STEPS: (10000,)
-  MAX_ITER: 15000
+  MAX_ITER: 1
   CHECKPOINT_PERIOD: 5000
   WARMUP_ITERS: 100
 OUTPUT_DIR: "checkpoints/vaipe/TFA_fastercnn_base_r50_finetune_13shot_retry"

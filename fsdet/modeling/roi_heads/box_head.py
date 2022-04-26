@@ -47,7 +47,6 @@ class FastRCNNConvFCHead(nn.Module):
             input_shape.height,
             input_shape.width,
         )
-
         self.conv_norm_relus = []
         for k in range(num_conv):
             conv = Conv2d(
@@ -66,7 +65,6 @@ class FastRCNNConvFCHead(nn.Module):
                 self._output_size[1],
                 self._output_size[2],
             )
-
         self.fcs = []
         for k in range(num_fc):
             fc = nn.Linear(np.prod(self._output_size), fc_dim)
@@ -85,9 +83,13 @@ class FastRCNNConvFCHead(nn.Module):
         if len(self.fcs):
             if x.dim() > 2:
                 x = torch.flatten(x, start_dim=1)
-            for layer in self.fcs:
-                x = F.relu(layer(x))
-        return x
+            for i, layer in enumerate(self.fcs):
+                if i < len(self.fcs) - 1:
+                    x = F.relu(layer(x))
+                else:
+                    y = layer(x)
+                    x = F.relu(layer(x))
+        return x,y
 
     @property
     def output_size(self):
@@ -211,6 +213,129 @@ class FastRCNNDoubleHead(nn.Module):
         return loc_feat, cls_feat
 
     @property
+    def output_size(self):
+        return self._output_size
+
+@ROI_BOX_HEAD_REGISTRY.register()
+class GeometricConvFCHead(nn.Module):
+    """
+    A head with several 3x3 conv layers (each followed by norm & relu) and
+    several fc layers (each followed by relu).
+    """
+
+    def __init__(self, cfg, input_shape: ShapeSpec):
+        """
+        The following attributes are parsed from config:
+            num_conv, num_fc: the number of conv/fc layers
+            conv_dim/fc_dim: the dimension of the conv/fc layers
+            norm: normalization for the conv layers
+        """
+        super().__init__()
+
+        # fmt: off
+        num_conv   = cfg.MODEL.ROI_BOX_HEAD.NUM_CONV
+        conv_dim   = cfg.MODEL.ROI_BOX_HEAD.CONV_DIM
+        edge_dim   = cfg.MODEL.ROI_BOX_HEAD.EDGE_DIM
+        texture_dim = cfg.MODEL.ROI_BOX_HEAD.TEXTURE_DIM
+        num_fc     = cfg.MODEL.ROI_BOX_HEAD.NUM_FC
+        fc_dim     = cfg.MODEL.ROI_BOX_HEAD.FC_DIM
+        norm       = cfg.MODEL.ROI_BOX_HEAD.NORM
+        # fmt: on
+        assert num_conv + num_fc > 0
+
+        #TO_DO add two channels of edge and texture in here
+        self._output_size = [
+            input_shape.channels,
+            input_shape.channels,
+            input_shape.channels,
+            input_shape.height,
+            input_shape.width,
+            fc_dim
+        ]
+        self.conv_norm_relus = []
+        self.convs_edge = []
+        self.convs_texture = []
+        for k in range(num_conv):
+            conv = Conv2d(
+                self._output_size[0],
+                conv_dim,
+                kernel_size=3,
+                padding=1,
+                bias=not norm,
+                norm=get_norm(norm, conv_dim),
+                activation=F.relu,
+            )
+            conv_edge = Conv2d(
+                self._output_size[1],
+                edge_dim,
+                kernel_size=3,
+                padding=1,
+                bias=not norm,
+                norm=get_norm(norm, conv_dim),
+                activation=F.relu,
+            )
+            conv_texture = Conv2d(
+                self._output_size[2],
+                texture_dim,
+                kernel_size=3,
+                padding=1,
+                bias=not norm,
+                norm=get_norm(norm, conv_dim),
+                activation=F.relu,
+            )
+            self._output_size[0] = conv_dim
+            self._output_size[1] = edge_dim
+            self._output_size[2] = texture_dim
+            self.add_module("conv{}".format(k + 1), conv)
+            self.add_module("conv_edge{}".format(k + 1), conv_edge)
+            self.add_module("conv_texture{}".format(k + 1), conv_texture)
+            self.conv_norm_relus.append(conv)
+            self.convs_edge.append(conv_edge)
+            self.convs_texture.append(conv_texture)
+
+        self.fcs = []
+        for k in range(num_fc):
+            if k == 0:
+                fc = nn.Linear((conv_dim+edge_dim+texture_dim)*self._output_size[3]*self._output_size[4], fc_dim)
+            else:
+                fc = nn.Linear(self._output_size[-1], fc_dim)
+            self.add_module("fc{}".format(k + 1), fc)
+            self.fcs.append(fc)
+            self._output_size[-1] = fc_dim
+
+        for layer in self.conv_norm_relus:
+            weight_init.c2_msra_fill(layer)
+        for layer in self.convs_edge:
+            weight_init.c2_msra_fill(layer)
+        for layer in self.convs_texture:
+            weight_init.c2_msra_fill(layer)
+        for layer in self.fcs:
+            weight_init.c2_xavier_fill(layer)
+
+    def forward(self, x):
+        x_conv = x
+        x_edge = x
+        x_texture = x
+        for layer in self.conv_norm_relus:
+            x_conv = layer(x_conv)
+        for layer in self.convs_edge:
+            x_edge = layer(x_edge)
+        for layer in self.convs_texture:
+            x_texture = layer(x_texture)
+        
+        x = torch.cat([x_conv, x_edge, x_texture], dim=1)
+        
+        if len(self.fcs):
+            if x.dim() > 2:
+                x = torch.flatten(x, start_dim=1)
+            for i, layer in enumerate(self.fcs):
+                if i < len(self.fcs) - 1:
+                    x = F.relu(layer(x))
+                else:
+                    y = layer(x)
+                    x = F.relu(layer(x))
+        return x, x_edge, x_texture, y
+
     def output_size(self):
         return self._output_size
 

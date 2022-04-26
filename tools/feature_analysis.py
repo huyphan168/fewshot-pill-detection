@@ -94,12 +94,18 @@ if __name__ == "__main__":
     predictor.model.backbone.fpn_output4.register_forward_hook(activation_hook_fpn4)
     predictor.model.backbone.fpn_output5.register_forward_hook(activation_hook_fpn5)
 
-    with open("/mnt/disk1/huyvinuni/datasets/emed/few_shot_names.pkl", "rb") as f:
+    with open("/home/vishc1/datasets/vaipe/few_shot_names.pkl", "rb") as f:
         few_shot_names = pkl.load(f)
+    with open("/home/vishc1/datasets/vaipe/base_names.pkl", "rb") as f:
+        base_shot_names = pkl.load(f)
+    with open("/home/vishc1/datasets/vaipe/name2id.pkl", "rb") as f:
+        name2id = pkl.load(f)
+    few_shot_ids = [name2id[name] for name in few_shot_names]
+
 
     few_objects = []
-    for i in os.listdir("test_images/all_test/labels"):
-        json_path = os.path.join("test_images/all_test/labels", i)
+    for i in os.listdir("/home/vishc1/datasets/vaipe/test/labels"):
+        json_path = os.path.join("/home/vishc1/datasets/vaipe/test/labels", i)
         with open(json_path, "r") as f:
             data = json.load(f)
         boxes = data["boxes"] 
@@ -122,6 +128,7 @@ if __name__ == "__main__":
     im = cv2.resize(im, (640, 640))
 
     outputs = predictor(im)
+    # print(outputs)
     v = Visualizer(im[:, :, ::-1], MetadataCatalog.get(cfg.DATASETS.TEST[0]), scale=1.2)
     v = v.draw_instance_predictions(outputs["instances"].to("cpu"))
     predicted_img = v.get_image()

@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 # avoid conflicting with the existing GeneralizedRCNN module in Detectron2
 from .build import META_ARCH_REGISTRY
 
-__all__ = ["GeneralizedRCNN", "ProposalNetwork"]
+__all__ = ["GeneralizedRCNN", "ProposalNetwork", "GeometricRCNN"]
 
 
 @META_ARCH_REGISTRY.register()
@@ -29,14 +29,13 @@ class GeneralizedRCNN(nn.Module):
 
     def __init__(self, cfg):
         super().__init__()
-
+        self.cfg=cfg
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.backbone = build_backbone(cfg)
         self.proposal_generator = build_proposal_generator(
             cfg, self.backbone.output_shape()
         )
         self.roi_heads = build_roi_heads(cfg, self.backbone.output_shape())
-        print(self.backbone.output_shape())
         assert len(cfg.MODEL.PIXEL_MEAN) == len(cfg.MODEL.PIXEL_STD)
         num_channels = len(cfg.MODEL.PIXEL_MEAN)
         pixel_mean = (
@@ -182,7 +181,7 @@ class GeneralizedRCNN(nn.Module):
                     x["proposals"].to(self.device) for x in batched_inputs
                 ]
 
-            results, _ = self.roi_heads(images, features, proposals, None)
+            results, box_features = self.roi_heads(images, features, proposals, None)
         else:
             detected_instances = [
                 x.to(self.device) for x in detected_instances
@@ -190,7 +189,7 @@ class GeneralizedRCNN(nn.Module):
             results = self.roi_heads.forward_with_given_boxes(
                 features, detected_instances
             )
-
+        
         if do_postprocess:
             processed_results = []
             for results_per_image, input_per_image, image_size in zip(
@@ -200,7 +199,10 @@ class GeneralizedRCNN(nn.Module):
                 width = input_per_image.get("width", image_size[1])
                 r = detector_postprocess(results_per_image, height, width)
                 processed_results.append({"instances": r})
-            return processed_results
+            if not self.cfg.MODEL.VISUALIZATION:
+                return processed_results
+            else:
+                return processed_results, box_features
         else:
             return results
 
@@ -285,3 +287,4 @@ class ProposalNetwork(nn.Module):
             r = detector_postprocess(results_per_image, height, width)
             processed_results.append({"proposals": r})
         return processed_results
+

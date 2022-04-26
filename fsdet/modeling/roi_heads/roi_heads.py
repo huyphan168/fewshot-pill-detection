@@ -18,7 +18,7 @@ from typing import Dict
 
 from .box_head import build_box_head
 from .fast_rcnn import ROI_HEADS_OUTPUT_REGISTRY, FastRCNNOutputLayers, FastRCNNOutputs
-
+from .upsampler import Upsampler, L2maps
 from .fast_rcnn import (
     FastRCNNOutputLayers,
     FastRCNNOutputs,
@@ -122,6 +122,7 @@ class ROIHeads(torch.nn.Module):
         self.box2box_transform = Box2BoxTransform(
             weights=cfg.MODEL.ROI_BOX_HEAD.BBOX_REG_WEIGHTS
         )
+        self.cfg = cfg
 
     def _sample_proposals(self, matched_idxs, matched_labels, gt_classes):
         """
@@ -460,6 +461,9 @@ class StandardROIHeads(ROIHeads):
         if self.training:
             losses = self._forward_box(features_list, proposals)
             return proposals, losses
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, box_features = self._forward_box(features_list, proposals)
+            return pred_instances, box_features
         else:
             pred_instances = self._forward_box(features_list, proposals)
             return pred_instances, {}
@@ -482,7 +486,7 @@ class StandardROIHeads(ROIHeads):
         box_features = self.box_pooler(
             features, [x.proposal_boxes for x in proposals]
         )
-        box_features = self.box_head(box_features)
+        box_features,y = self.box_head(box_features)
         pred_class_logits, pred_proposal_deltas = self.box_predictor(
             box_features
         )
@@ -497,6 +501,14 @@ class StandardROIHeads(ROIHeads):
         )
         if self.training:
             return outputs.losses()
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, keep_ids = outputs.inference(
+                self.test_score_thresh,
+                self.test_nms_thresh,
+                self.test_detections_per_img,
+            )
+            # print("dcn", keep_ids)
+            return pred_instances, y[keep_ids[0],:]
         else:
             pred_instances, _ = outputs.inference(
                 self.test_score_thresh,
@@ -566,3 +578,268 @@ class ContrastiveROIHeads(StandardROIHeads):
                 self.test_score_thresh, self.test_nms_thresh, self.test_detections_per_img
             )
             return pred_instances
+
+
+
+@ROI_HEADS_REGISTRY.register()
+class GeometricROIHeads(ROIHeads):
+    """
+    It's "standard" in a sense that there is no ROI transform sharing
+    or feature sharing between tasks.
+    The cropped rois go to separate branches directly.
+    This way, it is easier to make separate abstractions for different branches.
+
+    This class is used by most models, such as FPN and C5.
+    To implement more models, you can subclass it and implement a different
+    :meth:`forward()` or a head.
+    """
+
+    def __init__(self, cfg, input_shape):
+        super(GeometricROIHeads, self).__init__(cfg, input_shape)
+        self._init_box_head(cfg)
+
+
+    def _init_box_head(self, cfg):
+        # fmt: off
+        pooler_resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
+        pooler_scales     = tuple(1.0 / self.feature_strides[k] for k in self.in_features)
+        sampling_ratio    = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        pooler_type       = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        # fmt: on
+
+        # If StandardROIHeads is applied on multiple feature maps (as in FPN),
+        # then we share the same predictors and therefore the channel counts must be the same
+        in_channels = [self.feature_channels[f] for f in self.in_features]
+        # Check all channel counts are equal
+        assert len(set(in_channels)) == 1, in_channels
+        in_channels = in_channels[0]
+
+        self.box_pooler = ROIPooler(
+            output_size=pooler_resolution,
+            scales=pooler_scales,
+            sampling_ratio=sampling_ratio,
+            pooler_type=pooler_type,
+        )
+        # Here we split "box head" and "box predictor", which is mainly due to historical reasons.
+        # They are used together so the "box predictor" layers should be part of the "box head".
+        # New subclasses of ROIHeads do not need "box predictor"s.
+        self.box_head = build_box_head(
+            cfg,
+            ShapeSpec(
+                channels=in_channels,
+                height=pooler_resolution,
+                width=pooler_resolution,
+            ),
+        )
+        self.upsampler_edge = Upsampler(cfg, 
+                ShapeSpec(
+                    channels = self.box_head.output_size()[1],
+                    height = pooler_resolution,
+                    width = pooler_resolution
+            )
+        )
+        self.upsampler_texture = Upsampler(cfg,
+                ShapeSpec(
+                    channels=self.box_head.output_size()[2],
+                    height = pooler_resolution,
+                    width = pooler_resolution
+                )
+        )
+        self.L2maps_edge = L2maps(cfg, 
+                ShapeSpec(
+                    channels = self.upsampler_edge.output_size()[0],
+                    height = self.upsampler_edge.output_size()[1],
+                    width = self.upsampler_edge.output_size()[2]
+            )
+        )
+        self.L2maps_texture = L2maps(cfg, 
+                ShapeSpec(
+                    channels = self.upsampler_texture.output_size()[0],
+                    height = self.upsampler_texture.output_size()[1],
+                    width = self.upsampler_texture.output_size()[2]
+            )
+        )
+        output_layer = cfg.MODEL.ROI_HEADS.OUTPUT_LAYER
+        self.box_predictor = ROI_HEADS_OUTPUT_REGISTRY.get(output_layer)(
+            cfg,
+            self.box_head.output_size()[4],
+            self.num_classes,
+            self.cls_agnostic_bbox_reg,
+        )
+
+    def forward(self, images, features, proposals, targets=None):
+        """
+        See :class:`ROIHeads.forward`.
+        """
+        del images
+        if self.training:
+            proposals = self.label_and_sample_proposals(proposals, targets)
+        del targets
+
+        features_list = [features[f] for f in self.in_features]
+
+        if self.training:
+            losses = self._forward_box(features_list, proposals)
+            return proposals, losses
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, box_features = self._forward_box(features_list, proposals)
+            return pred_instances, box_features
+        else:
+            pred_instances = self._forward_box(features_list, proposals)
+            return pred_instances, {}
+
+    def _forward_box(self, features, proposals):
+        """
+        Forward logic of the box prediction branch.
+
+        Args:
+            features (list[Tensor]): #level input features for box prediction
+            proposals (list[Instances]): the per-image object proposals with
+                their matching ground truth.
+                Each has fields "proposal_boxes", and "objectness_logits",
+                "gt_classes", "gt_boxes".
+
+        Returns:
+            In training, a dict of losses.
+            In inference, a list of `Instances`, the predicted instances.
+        """
+        box_features = self.box_pooler(
+            features, [x.proposal_boxes for x in proposals]
+        )
+        box_features, edge_feats, texture_feats, y = self.box_head(box_features)
+        
+        edge_maps = self.upsampler_edge(edge_feats)
+        texture_maps = self.upsampler_texture(texture_feats)
+        import IPython
+        IPython.embed()
+        edge_loss = self.L2maps_edge(edge_maps, proposals)
+        texture_loss = self.L2maps_texture(texture_maps, proposals)
+
+        pred_class_logits, pred_proposal_deltas = self.box_predictor(
+            box_features
+        )
+        del box_features
+
+        outputs = FastRCNNOutputs(
+            self.box2box_transform,
+            pred_class_logits,
+            pred_proposal_deltas,
+            proposals,
+            self.smooth_l1_beta,
+        )
+        losses = outputs.losses()
+        losses["edge_loss"] = edge_loss*0.25
+        losses["texture_loss"] = texture_loss*0.25
+        if self.training:
+            return losses
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, keep_ids = outputs.inference(
+                self.test_score_thresh,
+                self.test_nms_thresh,
+                self.test_detections_per_img,
+            )
+            # print("dcn", keep_ids)
+            return pred_instances, y[keep_ids[0],:]
+        else:
+            pred_instances, _ = outputs.inference(
+                self.test_score_thresh,
+                self.test_nms_thresh,
+                self.test_detections_per_img,
+            )
+            return pred_instances
+
+    #TO_DO combining edge maps and texture maps cropped into proposal (matching)
+    @torch.no_grad()
+    def label_and_sample_proposals(self, proposals, targets):
+        """
+        Prepare some proposals to be used to train the ROI heads.
+        It performs box matching between `proposals` and `targets`, and assigns
+        training labels to the proposals.
+        It returns `self.batch_size_per_image` random samples from proposals and groundtruth boxes,
+        with a fraction of positives that is no larger than `self.positive_sample_fraction.
+
+        Args:
+            See :meth:`ROIHeads.forward`
+
+        Returns:
+            list[Instances]:
+                length `N` list of `Instances`s containing the proposals
+                sampled for training. Each `Instances` has the following fields:
+                - proposal_boxes: the proposal boxes
+                - gt_boxes: the ground-truth box that the proposal is assigned to
+                  (this is only meaningful if the proposal has a label > 0; if label = 0
+                   then the ground-truth box is random)
+                Other fields such as "gt_classes" that's included in `targets`.
+        """
+        gt_boxes = [x.gt_boxes for x in targets]
+        # Augment proposals with ground-truth boxes.
+        # In the case of learned proposals (e.g., RPN), when training starts
+        # the proposals will be low quality due to random initialization.
+        # It's possible that none of these initial
+        # proposals have high enough overlap with the gt objects to be used
+        # as positive examples for the second stage components (box head,
+        # cls head). Adding the gt boxes to the set of proposals
+        # ensures that the second stage components will have some positive
+        # examples from the start of training. For RPN, this augmentation improves
+        # convergence and empirically improves box AP on COCO by about 0.5
+        # points (under one tested configuration).
+        if self.proposal_append_gt:
+            proposals = add_ground_truth_to_proposals(gt_boxes, proposals)
+
+        proposals_with_gt = []
+
+        num_fg_samples = []
+        num_bg_samples = []
+        for proposals_per_image, targets_per_image in zip(proposals, targets):
+            has_gt = len(targets_per_image) > 0
+            match_quality_matrix = pairwise_iou(
+                targets_per_image.gt_boxes, proposals_per_image.proposal_boxes
+            )
+            matched_idxs, matched_labels = self.proposal_matcher(
+                match_quality_matrix
+            )
+            sampled_idxs, gt_classes = self._sample_proposals(
+                matched_idxs, matched_labels, targets_per_image.gt_classes
+            )
+
+            # Set target attributes of the sampled proposals:
+            proposals_per_image = proposals_per_image[sampled_idxs]
+            proposals_per_image.gt_classes = gt_classes
+
+            # We index all the attributes of targets that start with "gt_"
+            # and have not been added to proposals yet (="gt_classes").
+            if has_gt:
+                sampled_targets = matched_idxs[sampled_idxs]
+                # NOTE: here the indexing waste some compute, because heads
+                # will filter the proposals again (by foreground/background,
+                # etc), so we essentially index the data twice.
+                for (
+                    trg_name,
+                    trg_value,
+                ) in targets_per_image.get_fields().items():
+                    if trg_name.startswith(
+                        "gt_"
+                    ) and not proposals_per_image.has(trg_name):
+                        proposals_per_image.set(
+                            trg_name, trg_value[sampled_targets]
+                        )
+            else:
+                gt_boxes = Boxes(
+                    targets_per_image.gt_boxes.tensor.new_zeros(
+                        (len(sampled_idxs), 4)
+                    )
+                )
+                proposals_per_image.gt_boxes = gt_boxes
+
+            num_bg_samples.append(
+                (gt_classes == self.num_classes).sum().item()
+            )
+            num_fg_samples.append(gt_classes.numel() - num_bg_samples[-1])
+            proposals_with_gt.append(proposals_per_image)
+
+        # Log the number of fg/bg samples that are selected for training ROI heads
+        storage = get_event_storage()
+        storage.put_scalar("roi_head/num_fg_samples", np.mean(num_fg_samples))
+        storage.put_scalar("roi_head/num_bg_samples", np.mean(num_bg_samples))
+
+        return proposals_with_gt

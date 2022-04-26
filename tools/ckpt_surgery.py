@@ -213,7 +213,7 @@ if __name__ == '__main__':
         NOVEL_CLASSES = [name2id[name] for name in novel_classes]
         ALL_CLASSES = sorted(BASE_CLASSES + NOVEL_CLASSES)
         IDMAP = {v:i for i, v in enumerate(ALL_CLASSES)}
-        TAR_SIZE = len(base_classes)
+        TAR_SIZE = len(name2id)
     elif args.lvis:
         # LVIS
         NOVEL_CLASSES = [

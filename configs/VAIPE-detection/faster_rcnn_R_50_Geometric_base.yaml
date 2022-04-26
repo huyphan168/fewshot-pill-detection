@@ -1,0 +1,30 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  META_ARCHITECTURE: "GeometricRCNN"
+  WEIGHTS: "checkpoints/R-50.pkl"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  ROI_HEADS:
+    NUM_CLASSES: 231
+  ROI_HEADS:
+    FREEZE_GEOMETRIC: True
+    NAME: "GeometricROIHeads"
+    IN_FEATURES: ["p2", "p3", "p4", "p5"]
+  ROI_BOX_HEAD:
+    NAME: "GeometricConvFCHead"
+    NUM_FC: 2
+    NUM_CONV: 4
+    CONV_DIM: 200
+    EDGE_DIM: 28
+    TEXTURE_DIM: 28 
+    POOLER_RESOLUTION: 7
+DATASETS:
+  TRAIN: ('vaipe_train_base',)
+  TEST: ('vaipe_test_base',)
+SOLVER:
+  IMS_PER_BATCH: 8
+  STEPS: (10000, 20000)
+  MAX_ITER: 30000
+  CHECKPOINT_PERIOD: 5000
+OUTPUT_DIR: "checkpoints/vaipe/Geometric_fastercnn_base_r50"
