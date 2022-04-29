@@ -35,11 +35,9 @@ def parse_args():
                         help='For LVIS models')
     parser.add_argument('--emed', action='store_true',
                         help='For EMED models')
-    parser.add_argument('--model', type=str, default='sparse_rcnn',
+    parser.add_argument('--model', type=str, default='rcnn',
                         help='Model name')
     return parser.parse_args()
-    args = parser.parse_args()
-    return args
 
 
 def ckpt_surgery(args):

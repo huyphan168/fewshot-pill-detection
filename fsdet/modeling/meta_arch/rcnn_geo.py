@@ -88,10 +88,6 @@ class GeometricRCNN(nn.Module):
                 p.requires_grad = False
             print("froze proposal generator parameters")
 
-        if cfg.MODEL.ROI_HEADS.FREEZE_FEAT:
-            for p in self.roi_heads.box_head.parameters():
-                p.requires_grad = False
-            print("froze roi_box_head parameters")
 
     def forward(self, batched_inputs):
         """
@@ -151,7 +147,6 @@ class GeometricRCNN(nn.Module):
         _, detector_losses = self.roi_heads(
             images, features, proposals, gt_instances
         )
-
         losses = {}
         losses.update(detector_losses)
         losses.update(proposal_losses)

@@ -1,3 +1,4 @@
+from turtle import forward
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,10 +43,10 @@ class Upsampler(nn.Module):
         #input (512*batch_size, 28, 7, 7)
         #output (512*bs, 1, 112, 112)
         for k, layer in enumerate(self.deconvs):
-            if k!= len(self.deconvs):
+            if k!= len(self.deconvs)-1:
                 x = F.relu(layer(x))
             else:
-                x = F.Tanh(layer(x))
+                x = F.sigmoid(layer(x))
         return x
 
     def output_size(self):
@@ -53,9 +54,22 @@ class Upsampler(nn.Module):
 
 #TO_DO Implementing pixel-wise los
 class L2maps(nn.Module):
-    def __init__(self, cfg, input_shape):
+    def __init__(self, cfg, input_shape, map_kind):
         super().__init__()
         self.cfg = cfg
         self.input_shape = input_shape
+        self.map_kind = map_kind
+        self.loss = nn.BCELoss(reduction="mean")
+
+    def forward(self, pred_maps, proposals):
+        maps = []
+        for prop in proposals:
+            maps.extend(prop._fields["gt_"+self.map_kind])
+        #(512*bs, h,w)
+        maps_target = torch.stack(maps, axis=0)
+        #(512*bs, 1, h, w)
+        maps_target = maps_target.unsqueeze(1)
+        return self.loss(pred_maps, maps_target)
+        
 
     

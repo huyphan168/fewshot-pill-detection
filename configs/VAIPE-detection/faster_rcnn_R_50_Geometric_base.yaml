@@ -6,25 +6,25 @@ MODEL:
   RESNETS:
     DEPTH: 50
   ROI_HEADS:
-    NUM_CLASSES: 231
-  ROI_HEADS:
-    FREEZE_GEOMETRIC: True
+    FREEZE_GEOMETRIC: False
     NAME: "GeometricROIHeads"
     IN_FEATURES: ["p2", "p3", "p4", "p5"]
+    NUM_CLASSES: 231
   ROI_BOX_HEAD:
     NAME: "GeometricConvFCHead"
     NUM_FC: 2
     NUM_CONV: 4
-    CONV_DIM: 200
-    EDGE_DIM: 28
-    TEXTURE_DIM: 28 
+    CONV_DIM: 64
+    EDGE_DIM: 32
+    TEXTURE_DIM: 32
     POOLER_RESOLUTION: 7
 DATASETS:
-  TRAIN: ('vaipe_train_base',)
+  TRAIN: ('vaipe_train_base_geo',)
   TEST: ('vaipe_test_base',)
+TRAINER: "GeometricRCNNTrainer"
 SOLVER:
-  IMS_PER_BATCH: 8
+  IMS_PER_BATCH: 4
   STEPS: (10000, 20000)
   MAX_ITER: 30000
   CHECKPOINT_PERIOD: 5000
-OUTPUT_DIR: "checkpoints/vaipe/Geometric_fastercnn_base_r50"
+OUTPUT_DIR: "checkpoints/vaipe/Geometric_fastercnn_base_r50_128"

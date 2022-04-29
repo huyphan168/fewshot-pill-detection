@@ -650,19 +650,21 @@ class GeometricROIHeads(ROIHeads):
                     channels = self.upsampler_edge.output_size()[0],
                     height = self.upsampler_edge.output_size()[1],
                     width = self.upsampler_edge.output_size()[2]
-            )
+            ),
+                "edge"
         )
         self.L2maps_texture = L2maps(cfg, 
                 ShapeSpec(
                     channels = self.upsampler_texture.output_size()[0],
                     height = self.upsampler_texture.output_size()[1],
                     width = self.upsampler_texture.output_size()[2]
-            )
+            ),
+                "texture"
         )
         output_layer = cfg.MODEL.ROI_HEADS.OUTPUT_LAYER
         self.box_predictor = ROI_HEADS_OUTPUT_REGISTRY.get(output_layer)(
             cfg,
-            self.box_head.output_size()[4],
+            self.box_head.output_size()[5],
             self.num_classes,
             self.cls_agnostic_bbox_reg,
         )
@@ -706,20 +708,22 @@ class GeometricROIHeads(ROIHeads):
         box_features = self.box_pooler(
             features, [x.proposal_boxes for x in proposals]
         )
+        # new_proposals = []
+        # #TO_DO replace
+        # for prop in proposals:
+        #     prop._fields["gt_edge"] = [torch.rand(112,112).cuda() for k in range(512)]
+        #     prop._fields["gt_texture"] = [torch.rand(112,112).cuda() for k in range(512)]
+        #     new_proposals.append(prop)
+        # proposals = new_proposals
         box_features, edge_feats, texture_feats, y = self.box_head(box_features)
         
         edge_maps = self.upsampler_edge(edge_feats)
         texture_maps = self.upsampler_texture(texture_feats)
-        import IPython
-        IPython.embed()
-        edge_loss = self.L2maps_edge(edge_maps, proposals)
-        texture_loss = self.L2maps_texture(texture_maps, proposals)
-
+    
         pred_class_logits, pred_proposal_deltas = self.box_predictor(
             box_features
         )
         del box_features
-
         outputs = FastRCNNOutputs(
             self.box2box_transform,
             pred_class_logits,
@@ -727,9 +731,13 @@ class GeometricROIHeads(ROIHeads):
             proposals,
             self.smooth_l1_beta,
         )
-        losses = outputs.losses()
-        losses["edge_loss"] = edge_loss*0.25
-        losses["texture_loss"] = texture_loss*0.25
+        if self.training:
+            losses = outputs.losses()
+            if "gt_edge" in proposals[0]._fields.keys():
+                edge_loss = self.L2maps_edge(edge_maps, proposals)
+                texture_loss = self.L2maps_texture(texture_maps, proposals)
+                losses["edge_loss"] = edge_loss*0.5
+                losses["texture_loss"] = texture_loss*0.5
         if self.training:
             return losses
         elif self.cfg.MODEL.VISUALIZATION:
@@ -771,6 +779,7 @@ class GeometricROIHeads(ROIHeads):
                    then the ground-truth box is random)
                 Other fields such as "gt_classes" that's included in `targets`.
         """
+        #proposals and gt_boxes are both list of images proposal boxes and gt
         gt_boxes = [x.gt_boxes for x in targets]
         # Augment proposals with ground-truth boxes.
         # In the case of learned proposals (e.g., RPN), when training starts
@@ -783,6 +792,12 @@ class GeometricROIHeads(ROIHeads):
         # examples from the start of training. For RPN, this augmentation improves
         # convergence and empirically improves box AP on COCO by about 0.5
         # points (under one tested configuration).
+        """" 
+        gt_proposal = Instances(proposals.image_size)
+        gt_proposal.proposal_boxes = gt_boxes
+        gt_proposal.objectness_logits = gt_logits
+        new_proposals = Instances.cat([proposals, gt_proposal])
+        """
         if self.proposal_append_gt:
             proposals = add_ground_truth_to_proposals(gt_boxes, proposals)
 

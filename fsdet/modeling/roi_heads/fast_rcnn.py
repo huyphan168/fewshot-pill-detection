@@ -293,6 +293,7 @@ class FastRCNNOutputs(object):
 
         Returns:
             A dict of losses (scalar tensors) containing keys "loss_cls" and "loss_box_reg".
+
         """
         return {
             "loss_cls": self.softmax_cross_entropy_loss(),

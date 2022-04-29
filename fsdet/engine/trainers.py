@@ -1,6 +1,6 @@
 from fsdet.evaluation import (
     COCOEvaluator, DatasetEvaluators, LVISEvaluator, PascalVOCDetectionEvaluator, EMEDEvaluator , verify_results)
-from fsdet.data.dataset_mapper import SparseRCNNDatasetMapper
+from fsdet.data.dataset_mapper import SparseRCNNDatasetMapper, GeometricRCNNDatasetMapper
 from . import DefaultTrainer
 import copy
 import logging
@@ -179,3 +179,48 @@ class Trainer(DefaultTrainer):
         if len(evaluator_list) == 1:
             return evaluator_list[0]
         return DatasetEvaluators(evaluator_list)
+
+@TRAINER_REGISTRY.register()
+class GeometricRCNNTrainer(DefaultTrainer):
+    """
+    We use the "DefaultTrainer" which contains a number pre-defined logic for
+    standard training workflow. They may not work for you, especially if you
+    are working on a new research project. In that case you can use the cleaner
+    "SimpleTrainer", or write your own training loop.
+    """
+
+    @classmethod
+    def build_evaluator(cls, cfg, dataset_name, output_folder=None):
+        """
+        Create evaluator(s) for a given dataset.
+        This uses the special metadata "evaluator_type" associated with each builtin dataset.
+        For your own dataset, you can simply create an evaluator manually in your
+        script and do not have to worry about the hacky if-else logic here.
+        """
+        if output_folder is None:
+            output_folder = os.path.join(cfg.OUTPUT_DIR, "inference")
+        evaluator_list = []
+        evaluator_type = MetadataCatalog.get(dataset_name).evaluator_type
+        if evaluator_type == "coco":
+            evaluator_list.append(
+                COCOEvaluator(dataset_name, cfg, True, output_folder)
+            )
+        if evaluator_type == "pascal_voc":
+            return PascalVOCDetectionEvaluator(dataset_name)
+        if evaluator_type == "lvis":
+            return LVISEvaluator(dataset_name, cfg, True, output_folder)
+        if evaluator_type == "emed":
+            return EMEDEvaluator(dataset_name, cfg, True, output_folder)
+        if len(evaluator_list) == 0:
+            raise NotImplementedError(
+                "no Evaluator for the dataset {} with the type {}".format(
+                    dataset_name, evaluator_type
+                )
+            )
+        if len(evaluator_list) == 1:
+            return evaluator_list[0]
+        return DatasetEvaluators(evaluator_list)
+    
+    def build_train_loader(cls, cfg):
+        mapper = GeometricRCNNDatasetMapper(cfg, is_train=True)
+        return build_detection_train_loader(cfg, mapper=mapper)

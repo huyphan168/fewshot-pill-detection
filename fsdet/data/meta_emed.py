@@ -210,7 +210,7 @@ def load_emed_json(json_file, image_root, metadata, dataset_name):
     id_map = metadata["thing_dataset_id_to_contiguous_id"]
 
     dataset_dicts = []
-    ann_keys = ["iscrowd", "bbox", "category_id"]
+    ann_keys = ["iscrowd", "bbox", "category_id", "edge_file", "texture_file"]
 
     if is_shots:
         for _, fileids_ in fileids.items():

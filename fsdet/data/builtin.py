@@ -293,6 +293,11 @@ def register_all_emed(root="/home/vishc1/datasets"):
             "vaipe/train/images",
             "vaipe/annotations/instances_train.json",
         ),
+        (
+            "vaipe_train_base_geo",
+            "vaipe/train/images",
+            "vaipe/annotations/instances_train_geo.json",
+        ),
         ("vaipe_few_all_13", "vaipe/train/images", "vaipe/annotations/instances_train.json"),
         ("vaipe_test_base", "vaipe/test/images", "vaipe/annotations/instances_test.json"),
         ("vaipe_test_all", "vaipe/test/images", "vaipe/annotations/instances_test.json"),
