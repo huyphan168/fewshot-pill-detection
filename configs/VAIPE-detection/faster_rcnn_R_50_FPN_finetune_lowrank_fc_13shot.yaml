@@ -1,16 +1,22 @@
 _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
+  META_ARCHITECTURE: "LowRankRCNN"
   WEIGHTS: "checkpoints/vaipe/TFA_fastercnn_base_r50/model_reset_surgery.pth"
   MASK_ON: False
   RESNETS:
     DEPTH: 50
   ROI_HEADS:
+    NAME: LowRankROIHeads
     NUM_CLASSES: 262
     FREEZE_FEAT: False
   ROI_BOX_HEAD:
-    NAME: "FastRCNNConvFCHead"
+    WEIGHT_PATH: "checkpoints/vaipe/TFA_fastercnn_base_r50/fc1.pkl"
+    NAME: "LowRankConvFCHead"
     NUM_FC: 2
     POOLER_RESOLUTION: 7
+    RANK: 175
+    RANK_UPDATE: 15
+    FREEZE_LRT: True
   BACKBONE:
     FREEZE: True
   PROPOSAL_GENERATOR:
@@ -21,8 +27,8 @@ DATASETS:
 SOLVER:
   IMS_PER_BATCH: 8
   BASE_LR: 0.001
-  STEPS: (10000,)
-  MAX_ITER: 15000
+  STEPS: (40000,)
+  MAX_ITER: 45000
   CHECKPOINT_PERIOD: 5000
-  WARMUP_ITERS: 100
-OUTPUT_DIR: "checkpoints/vaipe/faster_rcnn_R_50_FPN_ft_fc_roi_all_13shot"
+  WARMUP_ITERS: 5000
+OUTPUT_DIR: "checkpoints/vaipe/faster_rcnn_R_50_ft_lowrank10_175_13shot"

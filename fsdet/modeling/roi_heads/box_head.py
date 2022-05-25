@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from detectron2.layers import Conv2d, ShapeSpec, get_norm
 from detectron2.utils.registry import Registry
 from fsdet.modeling.backbone.resnet import BasicBlock, BottleneckBlock
-
+from fsdet.utils.lowrank_init import lowrank_init
 
 ROI_BOX_HEAD_REGISTRY = Registry("ROI_BOX_HEAD")
 ROI_BOX_HEAD_REGISTRY.__doc__ = """
@@ -346,3 +346,110 @@ def build_box_head(cfg, input_shape):
     name = cfg.MODEL.ROI_BOX_HEAD.NAME
     return ROI_BOX_HEAD_REGISTRY.get(name)(cfg, input_shape)
 
+
+@ROI_BOX_HEAD_REGISTRY.register()
+class LowRankConvFCHead(nn.Module):
+    """
+    A head with several 3x3 conv layers (each followed by norm & relu) and
+    several fc layers (each followed by relu).
+    """
+
+    def __init__(self, cfg, input_shape: ShapeSpec):
+        """
+        The following attributes are parsed from config:
+            num_conv, num_fc: the number of conv/fc layers
+            conv_dim/fc_dim: the dimension of the conv/fc layers
+            norm: normalization for the conv layers
+        """
+        super().__init__()
+
+        # fmt: off
+        num_conv   = cfg.MODEL.ROI_BOX_HEAD.NUM_CONV
+        conv_dim   = cfg.MODEL.ROI_BOX_HEAD.CONV_DIM
+        num_fc     = cfg.MODEL.ROI_BOX_HEAD.NUM_FC
+        fc_dim     = cfg.MODEL.ROI_BOX_HEAD.FC_DIM
+        norm       = cfg.MODEL.ROI_BOX_HEAD.NORM
+        rank       = cfg.MODEL.ROI_BOX_HEAD.RANK
+        rank_update= cfg.MODEL.ROI_BOX_HEAD.RANK_UPDATE 
+        # fmt: on
+        assert num_conv + num_fc > 0
+
+        self._output_size = (
+            input_shape.channels,
+            input_shape.height,
+            input_shape.width,
+        )
+        self.conv_norm_relus = []
+        for k in range(num_conv):
+            conv = Conv2d(
+                self._output_size[0],
+                conv_dim,
+                kernel_size=3,
+                padding=1,
+                bias=not norm,
+                norm=get_norm(norm, conv_dim),
+                activation=F.relu,
+            )
+            self.add_module("conv{}".format(k + 1), conv)
+            self.conv_norm_relus.append(conv)
+            self._output_size = (
+                conv_dim,
+                self._output_size[1],
+                self._output_size[2],
+            )
+        self.featmap_size = np.prod(self._output_size) 
+        self.fcs = []
+        self.res = []
+        self.b = nn.Parameter(torch.randn(fc_dim).float())
+        for k in range(num_fc):
+            if k!= 0:
+                fc = nn.Linear(np.prod(self._output_size), fc_dim)
+                self.add_module("fc{}".format(k + 1), fc)
+                self.fcs.append(fc)
+                self._output_size = fc_dim
+            else:
+                fc_RT = nn.Linear(np.prod(self._output_size), rank, bias=False)
+                self.add_module("fcRightT", fc_RT)
+                self.fcs.append(fc_RT)
+                self._output_size = rank
+                fc_L = nn.Linear(np.prod(self._output_size), fc_dim, bias=False)
+                self.add_module("fcLeft", fc_L)
+                self.fcs.append(fc_L)
+                self._output_size = fc_dim
+        for k in range(rank_update):
+            u = nn.Parameter(torch.randn(fc_dim).float())
+            v = nn.Parameter(torch.randn(self.featmap_size).float())
+            self.res.append((u,v))
+
+        for layer in self.conv_norm_relus:
+            weight_init.c2_msra_fill(layer)
+        for layer in self.fcs[2:]:
+            weight_init.c2_xavier_fill(layer)
+        self.fcs[0], self.fcs[1], self.b, self.res = lowrank_init(cfg, self.fcs[0], self.fcs[1], self.b, self.res)
+
+    def forward(self, x):
+        for layer in self.conv_norm_relus:
+            x = layer(x)
+        if len(self.fcs):
+            if x.dim() > 2:
+                x = torch.flatten(x, start_dim=1)
+            for i, layer in enumerate(self.fcs):
+                if  1 < i < len(self.fcs) - 1:
+                    x = F.relu(layer(x))
+                elif i == 0:
+                    main_x = self.fcs[0](x)
+                    main_x = self.fcs[1](main_x)
+                    main_x += self.b
+                    for (u,v) in self.res:
+                        main_x += torch.matmul(torch.matmul(x, v.unsqueeze(0).T), u.unsqueeze(1).T)
+                    x = F.relu(main_x)
+                elif i == 1:
+                    continue
+                else:
+                    y = layer(x)
+                    x = F.relu(layer(x))
+        return x,y
+
+    @property
+    def output_size(self):
+        return self._output_size

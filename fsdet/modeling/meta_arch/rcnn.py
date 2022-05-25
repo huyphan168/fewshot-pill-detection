@@ -83,6 +83,12 @@ class GeneralizedRCNN(nn.Module):
             for p in self.roi_heads.box_head.parameters():
                 p.requires_grad = False
             print("froze roi_box_head parameters")
+        if cfg.MODEL.ROI_BOX_HEAD.NAME == "LowRankConvFCHead":
+            if cfg.MODEL.ROI_BOX_HEAD.FREEZE_LRT:
+                for p in self.roi_heads.box_head.fcs[0].parameters():
+                    p.requires_grad = False
+                for p in self.roi_heads.box_head.fcs[0].parameters():
+                    p.requires_grad = False
 
     def forward(self, batched_inputs):
         """

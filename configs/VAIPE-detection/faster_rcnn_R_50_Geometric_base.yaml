@@ -23,8 +23,8 @@ DATASETS:
   TEST: ('vaipe_test_base',)
 TRAINER: "GeometricRCNNTrainer"
 SOLVER:
-  IMS_PER_BATCH: 4
-  STEPS: (10000, 20000)
-  MAX_ITER: 30000
+  IMS_PER_BATCH: 8
+  STEPS: (5000, 10000)
+  MAX_ITER: 20000
   CHECKPOINT_PERIOD: 5000
 OUTPUT_DIR: "checkpoints/vaipe/Geometric_fastercnn_base_r50_128"

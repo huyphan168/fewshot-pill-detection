@@ -18,6 +18,37 @@ def add_custom_config(cfg, model_name):
         return add_fsce_config(cfg)
     elif model_name == "geo":
         return add_geo_config(cfg)
+    elif model_name == "lowrank":
+        return add_lowrank_config(cfg)
+    elif model_name == "conlowrank":
+        return add_conlowrank_config(cfg)
+
+def add_conlowrank_config(cfg):
+    cfg.MODEL.ROI_BOX_HEAD.RANK = 170
+    cfg.MODEL.ROI_BOX_HEAD.RANK_UPDATE = 10 
+    cfg.MODEL.ROI_BOX_HEAD.FREEZE_LRT = True
+    cfg.MODEL.ROI_BOX_HEAD.LOWRANK_DECOMPOSE_METHOD = "SparseSVD"
+    cfg.MODEL.ROI_BOX_HEAD.WEIGHT_PATH = "checkpoints/vaipe/TFA_fastercnn_base_r50/fc1.pkl"
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH = CN({'ENABLED': False})
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.MLP_FEATURE_DIM = 128
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.TEMPERATURE = 0.1
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.LOSS_WEIGHT = 1.0
+    cfg.MODEL.ROI_BOX_HEAD.BOX_REG_WEIGHT = 1.0
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.DECAY = CN({'ENABLED': False})
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.DECAY.STEPS = [8000, 16000]
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.DECAY.RATE = 0.2
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.LOSS_VERSION = 'V1'
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.IOU_THRESHOLD = 0.5
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.REWEIGHT_FUNC = 'none'
+    cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.HEAD_ONLY = False
+    return cfg
+def add_lowrank_config(cfg):
+    cfg.MODEL.ROI_BOX_HEAD.RANK = 170
+    cfg.MODEL.ROI_BOX_HEAD.RANK_UPDATE = 10 
+    cfg.MODEL.ROI_BOX_HEAD.FREEZE_LRT = True
+    cfg.MODEL.ROI_BOX_HEAD.LOWRANK_DECOMPOSE_METHOD = "SparseSVD"
+    cfg.MODEL.ROI_BOX_HEAD.WEIGHT_PATH = "checkpoints/vaipe/TFA_fastercnn_base_r50/fc1.pkl"
+    return cfg
 
 def add_geo_config(cfg):
     cfg.MODEL.ROI_BOX_HEAD.NUM_DECONV = 4

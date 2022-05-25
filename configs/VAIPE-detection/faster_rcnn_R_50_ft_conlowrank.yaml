@@ -1,0 +1,62 @@
+_BASE_: "../Base-RCNN-FPN.yaml"
+
+MODEL:
+  META_ARCHITECTURE: "LowRankRCNN"
+  WEIGHTS: "checkpoints/vaipe/TFA_fastercnn_base_r50/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  BACKBONE:
+    FREEZE: True
+  PROPOSAL_GENERATOR:
+    FREEZE: True
+  RPN:
+    POST_NMS_TOPK_TRAIN: 2000
+  ROI_HEADS:
+    NAME: "LowRankContrastiveROIHeads"
+    NUM_CLASSES: 262
+    # OUTPUT_LAYER: "CosineSimOutputLayers"
+    FREEZE_FEAT: False
+    BATCH_SIZE_PER_IMAGE: 512
+    IOU_THRESHOLDS: [0.4]
+  ROI_BOX_HEAD:
+    WEIGHT_PATH: "checkpoints/vaipe/TFA_fastercnn_base_r50/fc1.pkl"
+    NAME: "LowRankConvFCHead"
+    NUM_FC: 2
+    POOLER_RESOLUTION: 7
+    RANK: 180
+    RANK_UPDATE: 15
+    FREEZE_LRT: True
+    CONTRASTIVE_BRANCH:
+      TEMPERATURE: 0.2
+      LOSS_WEIGHT: 0.2
+      DECAY:
+        ENABLED: True
+        STEPS: [3000, 6000]
+        RATE: 0.5
+      IOU_THRESHOLD: 0.6  # high credibility proposals provide consistency
+
+
+INPUT:
+  MIN_SIZE_TRAIN: (480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800)
+  MIN_SIZE_TEST: 800
+
+DATASETS:
+  TRAIN: ('vaipe_train_all_13shot',)
+  TEST: ('vaipe_test_all',)
+
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.001
+  GAMMA: 0.5
+  STEPS: (8000,12000)
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 4000
+  WARMUP_ITERS: 200
+
+TEST:
+  AUG:
+    ENABLED: True
+  EVAL_PERIOD: 1000
+
+OUTPUT_DIR: "checkpoints/vaipe/fsce_13shot_CL_r50_lowrank_testaug_fc_13shot"

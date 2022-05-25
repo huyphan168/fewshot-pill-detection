@@ -26,7 +26,7 @@ __all__ = ["register_meta_coco"]
 #     if is_shots:
 #         img_ids = {}
 #         # split_dir = os.path.join("datasets", "cocosplit")
-#         split_dir = "/home/vishc1/datasets/vaipe/vaipesplit"
+#         split_dir = "/home/huyen/projects/huypn/FewShotDetection/data/vaipe/annotations/TFA/vaipesplit"
 #         if "seed" in dataset_name:
 #             shot = dataset_name.split("_")[-2].split("shot")[0]
 #             seed = int(dataset_name.split("_seed")[-1])
@@ -152,7 +152,7 @@ def load_emed_json(json_file, image_root, metadata, dataset_name):
     is_joint = "few" in dataset_name
     if is_shots:
         fileids = {}
-        split_dir = "/home/vishc1/datasets/vaipe/vaipesplit"
+        split_dir = "/home/huyen/projects/huypn/FewShotDetection/data/vaipe/annotations/TFA/vaipesplit"
         if "seed" in dataset_name:
             shot = dataset_name.split("_")[-2].split("shot")[0]
             seed = int(dataset_name.split("_seed")[-1])
@@ -172,7 +172,7 @@ def load_emed_json(json_file, image_root, metadata, dataset_name):
             fileids[idx] = list(zip(imgs, anns))
     elif is_joint:
         fileids = {}
-        split_dir = "/home/vishc1/datasets/vaipe/vaipesplit"
+        split_dir = "/home/huyen/projects/huypn/FewShotDetection/data/vaipe/annotations/TFA/vaipesplit"
         if "seed" in dataset_name:
             shot = dataset_name.split("_")[-1]
             seed = int(dataset_name.split("_seed")[-1])

@@ -5,3 +5,4 @@ from .rcnn import GeneralizedRCNN, ProposalNetwork
 from .rcnn_grad import GeneralizedDecoupledRCNN
 from .rcnn_geo import GeometricRCNN
 from .sparse_rcnn import SparseRCNN
+from .rcnn_low import LowRankRCNN

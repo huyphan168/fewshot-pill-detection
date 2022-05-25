@@ -268,7 +268,7 @@ def register_all_pascal_voc(root="datasets"):
         MetadataCatalog.get(name).evaluator_type = "pascal_voc"
 
 
-def register_all_emed(root="/home/vishc1/datasets"):
+def register_all_emed(root="/home/huyen/projects/huypn/FewShotDetection/data"):
     # for dataset_name, splits_per_dataset in _PREDEFINED_SPLITS_COCO.items():
     #     for key, (image_root, json_file) in splits_per_dataset.items():
     #         # Assume pre-defined datasets live in `./datasets`.

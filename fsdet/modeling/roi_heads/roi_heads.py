@@ -1,4 +1,5 @@
 """Implement ROI_heads."""
+from charset_normalizer import detect
 import numpy as np
 import torch
 from torch import nn
@@ -212,13 +213,14 @@ class ROIHeads(torch.nn.Module):
             matched_idxs, matched_labels = self.proposal_matcher(
                 match_quality_matrix
             )
+            iou, _ = match_quality_matrix.max(dim=0)
             sampled_idxs, gt_classes = self._sample_proposals(
                 matched_idxs, matched_labels, targets_per_image.gt_classes
             )
-
             # Set target attributes of the sampled proposals:
             proposals_per_image = proposals_per_image[sampled_idxs]
             proposals_per_image.gt_classes = gt_classes
+            proposals_per_image.iou = iou[sampled_idxs]
 
             # We index all the attributes of targets that start with "gt_"
             # and have not been added to proposals yet (="gt_classes").
@@ -858,3 +860,218 @@ class GeometricROIHeads(ROIHeads):
         storage.put_scalar("roi_head/num_bg_samples", np.mean(num_bg_samples))
 
         return proposals_with_gt
+    
+
+@ROI_HEADS_REGISTRY.register()
+class LowRankROIHeads(ROIHeads):
+    """
+    It's "standard" in a sense that there is no ROI transform sharing
+    or feature sharing between tasks.
+    The cropped rois go to separate branches directly.
+    This way, it is easier to make separate abstractions for different branches.
+
+    This class is used by most models, such as FPN and C5.
+    To implement more models, you can subclass it and implement a different
+    :meth:`forward()` or a head.
+    """
+
+    def __init__(self, cfg, input_shape):
+        super(LowRankROIHeads, self).__init__(cfg, input_shape)
+        self._init_box_head(cfg)
+
+    def _init_box_head(self, cfg):
+        # fmt: off
+        pooler_resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
+        pooler_scales     = tuple(1.0 / self.feature_strides[k] for k in self.in_features)
+        sampling_ratio    = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        pooler_type       = cfg.MODEL.ROI_BOX_HEAD.POOLER_TYPE
+        # fmt: on
+
+        # If StandardROIHeads is applied on multiple feature maps (as in FPN),
+        # then we share the same predictors and therefore the channel counts must be the same
+        in_channels = [self.feature_channels[f] for f in self.in_features]
+        # Check all channel counts are equal
+        assert len(set(in_channels)) == 1, in_channels
+        in_channels = in_channels[0]
+
+        self.box_pooler = ROIPooler(
+            output_size=pooler_resolution,
+            scales=pooler_scales,
+            sampling_ratio=sampling_ratio,
+            pooler_type=pooler_type,
+        )
+        # Here we split "box head" and "box predictor", which is mainly due to historical reasons.
+        # They are used together so the "box predictor" layers should be part of the "box head".
+        # New subclasses of ROIHeads do not need "box predictor"s.
+        self.box_head = build_box_head(
+            cfg,
+            ShapeSpec(
+                channels=in_channels,
+                height=pooler_resolution,
+                width=pooler_resolution,
+            ),
+        )
+        output_layer = cfg.MODEL.ROI_HEADS.OUTPUT_LAYER
+        self.box_predictor = ROI_HEADS_OUTPUT_REGISTRY.get(output_layer)(
+            cfg,
+            self.box_head.output_size,
+            self.num_classes,
+            self.cls_agnostic_bbox_reg,
+        )
+
+    def forward(self, images, features, proposals, targets=None):
+        """
+        See :class:`ROIHeads.forward`.
+        """
+        del images
+        if self.training:
+            proposals = self.label_and_sample_proposals(proposals, targets)
+        del targets
+
+        features_list = [features[f] for f in self.in_features]
+
+        if self.training:
+            losses = self._forward_box(features_list, proposals)
+            return proposals, losses
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, box_features = self._forward_box(features_list, proposals)
+            return pred_instances, box_features
+        else:
+            pred_instances = self._forward_box(features_list, proposals)
+            return pred_instances, {}
+
+    def _forward_box(self, features, proposals):
+        """
+        Forward logic of the box prediction branch.
+
+        Args:
+            features (list[Tensor]): #level input features for box prediction
+            proposals (list[Instances]): the per-image object proposals with
+                their matching ground truth.
+                Each has fields "proposal_boxes", and "objectness_logits",
+                "gt_classes", "gt_boxes".
+
+        Returns:
+            In training, a dict of losses.
+            In inference, a list of `Instances`, the predicted instances.
+        """
+        box_features = self.box_pooler(
+            features, [x.proposal_boxes for x in proposals]
+        )
+        box_features,y = self.box_head(box_features)
+        pred_class_logits, pred_proposal_deltas = self.box_predictor(
+            box_features
+        )
+        del box_features
+
+        outputs = FastRCNNOutputs(
+            self.box2box_transform,
+            pred_class_logits,
+            pred_proposal_deltas,
+            proposals,
+            self.smooth_l1_beta,
+        )
+        list_w = [u.unsqueeze(1) for (u,v) in self.box_head.res]
+        list_w.append(torch.nn.functional.normalize(self.box_head.fcs[1].weight.data, dim=0))
+        W = torch.cat(list_w, dim=1).cuda()
+        orth_loss = torch.nn.functional.mse_loss(torch.matmul(W.T, W), torch.eye(W.size()[1]).cuda())
+        orth_loss = {"Orthogonal loss": 100*orth_loss}
+        if self.training:
+            detect_loss = outputs.losses()
+            detect_loss.update(orth_loss)
+            return detect_loss 
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, keep_ids = outputs.inference(
+                self.test_score_thresh,
+                self.test_nms_thresh,
+                self.test_detections_per_img,
+            )
+            # print("dcn", keep_ids)
+            return pred_instances, y[keep_ids[0],:]
+        else:
+            pred_instances, _ = outputs.inference(
+                self.test_score_thresh,
+                self.test_nms_thresh,
+                self.test_detections_per_img,
+            )
+            return pred_instances
+
+
+@ROI_HEADS_REGISTRY.register()
+class LowRankContrastiveROIHeads(StandardROIHeads):
+    def __init__(self, cfg, input_shape):
+        super().__init__(cfg, input_shape)
+        # fmt: on
+        self.cfg = cfg
+        self.fc_dim               = cfg.MODEL.ROI_BOX_HEAD.FC_DIM
+        self.mlp_head_dim         = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.MLP_FEATURE_DIM
+        self.temperature          = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.TEMPERATURE
+        self.contrast_loss_weight = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.LOSS_WEIGHT
+        self.box_reg_weight       = cfg.MODEL.ROI_BOX_HEAD.BOX_REG_WEIGHT
+        self.weight_decay         = False
+        self.decay_steps          = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.DECAY.STEPS
+        self.decay_rate           = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.DECAY.RATE
+
+        self.num_classes          = cfg.MODEL.ROI_HEADS.NUM_CLASSES
+
+        self.loss_version         = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.LOSS_VERSION
+        self.contrast_iou_thres   = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.IOU_THRESHOLD
+        self.reweight_func        = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.REWEIGHT_FUNC
+
+        self.cl_head_only         = cfg.MODEL.ROI_BOX_HEAD.CONTRASTIVE_BRANCH.HEAD_ONLY
+        # fmt: off
+
+        self.encoder = ContrastiveHead(self.fc_dim, self.mlp_head_dim)
+        if self.loss_version == 'V1':
+            self.criterion = SupConLoss(self.temperature, self.contrast_iou_thres, self.reweight_func)
+        elif self.loss_version == 'V2':
+            self.criterion = SupConLossV2(self.temperature, self.contrast_iou_thres)
+        self.criterion.num_classes = self.num_classes  # to be used in protype version
+
+    def _forward_box(self, features, proposals):
+        box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
+        box_features,y = self.box_head(box_features)  # [None, FC_DIM]
+        pred_class_logits, pred_proposal_deltas = self.box_predictor(box_features)
+        box_features_contrast = self.encoder(box_features)
+        del box_features
+
+        if self.weight_decay:
+            storage = get_event_storage()
+            if int(storage.iter) in self.decay_steps:
+                self.contrast_loss_weight *= self.decay_rate
+
+        outputs = FastRCNNContrastOutputs(
+            self.box2box_transform,
+            pred_class_logits,
+            pred_proposal_deltas,
+            proposals,
+            self.smooth_l1_beta,
+            box_features_contrast,
+            self.criterion,
+            self.contrast_loss_weight,
+            self.box_reg_weight,
+            self.cl_head_only,
+        )
+        list_w = [u.unsqueeze(1) for (u,v) in self.box_head.res]
+        list_w.append(torch.nn.functional.normalize(self.box_head.fcs[1].weight.data, dim=0))
+        W = torch.cat(list_w, dim=1).cuda()
+        orth_loss = torch.nn.functional.mse_loss(torch.matmul(W.T, W), torch.eye(W.size()[1]).cuda())
+        orth_loss = {"Orthogonal loss": 200*orth_loss}
+
+        if self.training:
+            detect_loss = outputs.losses()
+            detect_loss.update(orth_loss)
+            return detect_loss
+        elif self.cfg.MODEL.VISUALIZATION:
+            pred_instances, keep_ids = outputs.inference(
+                self.test_score_thresh,
+                self.test_nms_thresh,
+                self.test_detections_per_img,
+            )
+            # print("dcn", keep_ids)
+            return pred_instances, box_features_contrast[keep_ids[0],:]
+        else:
+            pred_instances, _ = outputs.inference(
+                self.test_score_thresh, self.test_nms_thresh, self.test_detections_per_img
+            )
+            return pred_instances

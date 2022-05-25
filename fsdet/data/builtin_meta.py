@@ -454,12 +454,12 @@ def _get_pascal_voc_fewshot_instances_meta():
     }
     return ret
 
-def _get_emed_fewshot_meta():
+def _get_emed_fewshot_meta(path="/home/huyen/projects/huypn/FewShotDetection/data"):
     import pickle as pkl
-    name2id = pkl.load(open("/home/vishc1/datasets/vaipe/name2id.pkl","rb"))
+    name2id = pkl.load(open(path+"/vaipe/name2id.pkl","rb"))
     metadata = {}
-    base_classes = pkl.load(open("/home/vishc1/datasets/vaipe/base_names.pkl","rb"))
-    novel_classes = pkl.load(open("/home/vishc1/datasets/vaipe/few_shot_names.pkl","rb"))
+    base_classes = pkl.load(open(path+"/vaipe/base_names.pkl","rb"))
+    novel_classes = pkl.load(open(path+"/vaipe/few_shot_names.pkl","rb"))
     base_ids = [name2id[name] for name in base_classes]
     novel_ids = [name2id[name] for name in novel_classes]
     classes = base_classes + novel_classes

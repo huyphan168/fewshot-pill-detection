@@ -1,7 +1,7 @@
 _BASE_: "../Base-RCNN-FPN.yaml"
 MODEL:
   META_ARCHITECTURE: "GeometricRCNN"
-  WEIGHTS: "checkpoints/vaipe/Geometric_fastercnn_r50_ft_13shot/model_final.pth"
+  WEIGHTS: "checkpoints/vaipe/Geometric_fastercnn_base_r50_128/model_reset_surgery.pth"
   MASK_ON: False
   RESNETS:
     DEPTH: 50
@@ -26,7 +26,7 @@ DATASETS:
   TRAIN: ('vaipe_train_all_13shot',)
   TEST: ('vaipe_test_all',)
 SOLVER:
-  IMS_PER_BATCH: 4
+  IMS_PER_BATCH: 8
   BASE_LR: 0.001
   STEPS: (20000,)
   MAX_ITER: 30000

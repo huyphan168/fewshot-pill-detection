@@ -446,8 +446,8 @@ def transform_instance_annotations(
                 "Supported types are: polygons as list[list[float] or ndarray],"
                 " COCO-style RLE as a dict.".format(type(segm))
             )
-    edge_map = utils.read_image(annotation["edge_file"], format=image_format)
-    texture_map = utils.read_image(annotation["texture_file"], format=image_format)
+    edge_map = utils.read_image("/home/huyen/projects/huypn/FewShotDetection/data/vaipe/" + annotation["edge_file"], format=image_format)
+    texture_map = utils.read_image("/home/huyen/projects/huypn/FewShotDetection/data/vaipe/" + annotation["texture_file"], format=image_format)
     edge_tensor = torch.as_tensor(np.ascontiguousarray(edge_map))[:,:,0]
     texture_tensor = torch.as_tensor(np.ascontiguousarray(texture_map))[:,:,0]
     edge_tensor[edge_tensor>0] = 1

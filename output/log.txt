@@ -1,0 +1,161 @@
+[05/03 21:50:52] detectron2 INFO: Rank of current process: 0. World size: 1
+[05/03 21:50:52] detectron2 INFO: Command line arguments: Namespace(config_file='configs/VAIPE-detection/faster_rcnn_R_50_FPN_ftroi.yaml', dist_url='tcp://127.0.0.1:50152', end_iter=-1, eval_all=False, eval_during_train=False, eval_iter=-1, eval_only=False, machine_rank=0, model_name='fsdet', num_gpus=1, num_machines=1, opts=None, resume=False, start_iter=-1)
+[05/03 21:50:52] detectron2 INFO: Contents of args.config_file=configs/VAIPE-detection/faster_rcnn_R_50_FPN_ftroi.yaml:
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  WEIGHTS: "checkpoints/vaipe/TFA_fastercnn_base_r50/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  ROI_HEADS:
+    NUM_CLASSES: 262
+    FREEZE_FEAT: False
+  ROI_BOX_HEAD:
+    NUM_FC: 2
+    POOLER_RESOLUTION: 7
+  BACKBONE:
+    FREEZE: True
+  PROPOSAL_GENERATOR:
+    FREEZE: True
+DATASETS:
+  TRAIN: ('vaipe_train_all_13shot',)
+  TEST: ('vaipe_test_all',)
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.001
+  STEPS: (10000,)
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 5000
+  WARMUP_ITERS: 100
+[05/03 21:50:52] detectron2 INFO: Full config saved to /home/huyen/projects/huypn/fspill/output/config.yaml
+[05/03 21:50:52] d2.utils.env INFO: Using a generated random seed 52977318
+[05/03 21:50:54] d2.data.build INFO: Removed 0 images with no usable annotations. 2957 images left.
+[05/03 21:50:54] d2.data.build INFO: Distribution of instances among all 262 categories:
+[36m|   category    | #instances   |   category    | #instances   |   category    | #instances   |
+|:-------------:|:-------------|:-------------:|:-------------|:-------------:|:-------------|
+|    3B-Medi    | 11           |  Abenin-Tab   | 13           | Acehasan_20.. | 11           |
+| Acetazolami.. | 11           | Acetylcyste.. | 11           |   Aecysmux    | 11           |
+|  Aerius_5mg   | 13           | Agifamcin-300 | 11           |  Agifovir-E   | 11           |
+|    Alaxan     | 12           |   Almetamin   | 12           | Alphalysosine | 12           |
+| Alphatrypa-.. | 11           |    Ameflu     | 11           | Ameflu-Nigh.. | 11           |
+| Amlodipin_5mg | 11           | Amoxicilin_.. | 11           |    An-Thảo    | 11           |
+| Apha-Bevagyl  | 11           | Arcalion-200  | 11           | Asanclar_50.. | 11           |
+| Aspirin-100mg | 11           | Atorvastatin  | 11           | Atorvastati.. | 12           |
+| Augmentin_1g  | 11           | Avas-10 (At.. | 11           |     Ayale     | 11           |
+| Azitnic_500mg | 11           |    BNGreen    | 11           |   BP_500mg    | 11           |
+|  Barole_20mg  | 12           | Berberin_5mg  | 11           |   Bermoric    | 11           |
+| Betaserc_16mg | 11           | Bineurox_30.. | 11           |  Biolac-A++   | 11           |
+|    Biotin     | 11           | Biseptol_48.. | 11           | Blackmores-.. | 11           |
+|  Brain-Forte  | 11           |    BrainIQ    | 11           | Bromelain-9.. | 11           |
+| Bán-Đầu-Thống | 11           | Bạch-Địa-Căn  | 11           | Cactimin-C500 | 11           |
+|   Caliquid    | 11           | Cefalexin_5.. | 11           | Cefurovid_5.. | 11           |
+|    Centrum    | 11           | Cephalexin_.. | 11           | Chloramphen.. | 11           |
+| Choncylox_5.. | 11           | Chondro-Aid.. | 12           |   Chymobest   | 12           |
+| Clorphenira.. | 11           | Colchicin_1mg | 11           | Concor-COR-.. | 11           |
+|    Cosele     | 11           |   Cosyndo-B   | 13           | Cảm-Xuyên-H.. | 11           |
+| Daflon_500mg  | 11           | Debridat_10.. | 11           | Decolgen-Fo.. | 11           |
+|  Decolgen-ND  | 11           | Desratel_5mg  | 11           | Diamicron-M.. | 12           |
+| Diamicron-M.. | 11           |   Diane-33    | 12           | Diclofenac-.. | 12           |
+| Dimenhydrin.. | 12           | Dopharalgic.. | 12           |   Dorocodon   | 11           |
+|   Dorogyne    | 12           | Drosperin_0.. | 13           | Drosperin_3mg | 12           |
+|   Dudencer    | 11           |  Ebitac_25mg  | 12           |    Elevit     | 11           |
+|  Elthon_50mg  | 11           | Emb-Fatol_4.. | 11           |   Enterlac    | 11           |
+|   Esapbe-40   | 12           | Esomeprazol.. | 11           | Esomeprazol.. | 12           |
+| Ethambutol_.. | 11           |    Eugica     | 11           | Evening-Pri.. | 11           |
+| Feburic_80mg  | 11           |    Felodil    | 11           | Ferricure_1.. | 11           |
+|   Fertinic    | 11           | Flagyl_250mg  | 12           |    Forgout    | 12           |
+| Fugacar_500mg | 11           | Furosemide_.. | 11           | Gabarica-400  | 11           |
+|  Ginkgo-360   | 12           |  Ginnarizine  | 11           |  Glotadol-F   | 11           |
+| Glucofine_8.. | 11           | Glucophage_.. | 12           |  Gofen_400mg  | 11           |
+|    Hagimox    | 11           |   Hà-Thủ-Ô    | 11           | Itraconazol.. | 11           |
+|    Iyafin     | 11           | Izandin_500mg | 11           |   Klacid-MR   | 11           |
+| Laroxyl_25mg  | 11           | Levofloxacin  | 11           | Levothyrox_.. | 12           |
+| Levotop_500mg | 11           |   Liv-52-DS   | 11           |    Livetin    | 11           |
+|   Livolin-H   | 11           |    Lopera     | 11           | Loperamide_.. | 11           |
+|    Lopran     | 12           |   Loratadin   | 11           |  Ludox_200mg  | 11           |
+|  Lyrica_75mg  | 11           |   Lysobapen   | 11           |  Macdin_600   | 11           |
+|  Magnesi-B6   | 11           |   Maxxhair    | 11           | Maxxmucous-.. | 12           |
+|  Medexa_4mg   | 11           |  Medrol_4mg   | 12           | Mekocetin_0.. | 11           |
+|   Metasone    | 11           | Metformin_5.. | 11           |  Methorphan   | 13           |
+| Metronidazo.. | 11           |    Midasol    | 11           |  Mobic_7.5mg  | 12           |
+|  Motilium-M   | 12           |  Mucosolvan   | 11           |  Myonal_50mg  | 11           |
+|    Mẫu-Đơn    | 11           | Mộc-Hoa-Trắng | 11           |  Naphacogyl   | 11           |
+|   Neurobion   | 11           |   Neutrivit   | 13           | Nexium-Mups.. | 11           |
+|   Nextg_Cal   | 11           | No-Spa-Fort.. | 12           |   Normagut    | 11           |
+|    Nutrios    | 11           | Opetrypsin-.. | 12           | Otibsil_40mg  | 12           |
+| Panadol-Cảm.. | 11           | Panadol-Extra | 11           | Panadol-Viê.. | 12           |
+| Paracetamol.. | 11           |  Patrotadin   | 11           |   Phaanedol   | 11           |
+|   Pharcoter   | 12           | Policosanol.. | 11           |   Poltrapa    | 11           |
+|  Power-Brain  | 11           | Prednisolon.. | 12           | Predsantyl_.. | 11           |
+| Prevasel-10.. | 12           | Pyrazinamid.. | 11           |   Queisser    | 11           |
+|   R-Cin_300   | 12           | Rheumapain-F  | 11           |   Richelet    | 11           |
+| Rinedif_300mg | 11           | Rodogyl_125mg | 11           |    Rotunda    | 11           |
+|   Rowatinex   | 12           |    Rupafin    | 11           | SaVi-Certir.. | 12           |
+| Sagafixim-1.. | 11           | Savi-Acarbo.. | 12           | Scanax_500mg  | 11           |
+|  Scanneuron   | 11           |   Scolanzo    | 11           | Sibelium_5mg  | 13           |
+| Singulair_5mg | 11           |   Soscough    | 11           | Spasmaverin.. | 12           |
+|   Spirastad   | 11           | Staclazide-.. | 12           | Stadpizide-50 | 11           |
+| Stomach-Gold  | 12           |  Stomex_20mg  | 12           |    Stresam    | 12           |
+|   Stugeron    | 11           | Synapain_75mg | 12           | Tanamisolblue | 11           |
+| Tavanic_500mg | 11           |    Teburap    | 11           | Telfast_180mg | 12           |
+| Terpin-Codein | 11           |    Tesafu     | 11           | Tetracyclin.. | 11           |
+| Theophylin_.. | 12           | Theralene_5mg | 12           | Thylmedi_4mg  | 11           |
+|     Tiffy     | 11           | Tinidazole_.. | 11           |    Tinizol    | 11           |
+| Tocimat_180mg | 11           | Transamin_5.. | 11           | Trikadinir-.. | 11           |
+|     Trymo     | 11           |     Turbe     | 11           |   Turbezid    | 11           |
+|  USA-Rotin-F  | 12           |   Ultracet    | 11           | Utrogestan_.. | 11           |
+| Valsarfast_.. | 11           | Vinpocetine.. | 11           | Vitamin-3B-.. | 11           |
+|  Vitamin-A&D  | 12           | Vitamin-B2_.. | 11           | Vitamin-C-TW3 | 11           |
+| Vitamin-PP_.. | 11           |   Vocanz-80   | 11           |   Voltaren    | 13           |
+|   Vstrivit    | 11           |    Waisan     | 13           | Xuyên-Hương.. | 11           |
+|     Xyzal     | 11           | Zelfamox-87.. | 11           |  Zestril_5mg  | 12           |
+| Zinnat_500mg  | 12           |   Zinzin-C    | 12           |  Zoloft_50mg  | 11           |
+|  Alpha-Choay  | 12           | Alprazolam-.. | 11           |  Ambron_30mg  | 11           |
+| Ameflu-Dayt.. | 11           | Amlodipin_1.. | 11           |    Bepoz-5    | 11           |
+| Betaloc-ZOK.. | 11           |    Cenovis    | 11           | Clarityne_1.. | 11           |
+| Deflucold-Day | 11           | Dexipharm-15  | 11           |  Dorithricin  | 12           |
+| Efferalgan_.. | 11           | Fexophar_18.. | 11           | Glotadol-Po.. | 11           |
+|   Hepromax    | 11           | Homiginmin-.. | 11           | Lacbiopro-B.. | 11           |
+|   Lục-Vị-F    | 11           |   Maxrogyl    | 11           |  Medrol_16mg  | 11           |
+|    Mobium     | 11           |    Moxilen    | 11           | Myderison_5.. | 11           |
+| Neurontin_3.. | 11           |    Nonzoli    | 11           |   OpeAzitro   | 11           |
+|    Pacemin    | 13           | Pantoprazol.. | 11           |   Regatonic   | 12           |
+|    Selazn     | 11           |               |              |               |              |
+|     total     | 2957         |               |              |               |              |[0m
+[05/03 21:50:54] d2.data.dataset_mapper INFO: [DatasetMapper] Augmentations used in training: [ResizeShortestEdge(short_edge_length=(640, 672, 704, 736, 768, 800), max_size=1333, sample_style='choice'), RandomFlip()]
+[05/03 21:50:54] d2.data.build INFO: Using training sampler TrainingSampler
+[05/03 21:50:54] d2.data.common INFO: Serializing 2957 elements to byte tensors and concatenating them all ...
+[05/03 21:50:54] d2.data.common INFO: Serialized dataset takes 0.85 MiB
+[05/03 21:50:54] fvcore.common.checkpoint INFO: [Checkpointer] Loading from checkpoints/vaipe/TFA_fastercnn_base_r50/model_reset_surgery.pth ...
+[05/03 21:50:55] d2.engine.train_loop INFO: Starting training from iteration 1
+[05/03 21:52:15] detectron2 INFO: Rank of current process: 0. World size: 1
+[05/03 21:52:15] detectron2 INFO: Command line arguments: Namespace(config_file='configs/VAIPE-detection/faster_rcnn_R_50_FPN_ftroi.yaml', dist_url='tcp://127.0.0.1:50152', end_iter=-1, eval_all=False, eval_during_train=False, eval_iter=-1, eval_only=False, machine_rank=0, model_name='fsdet', num_gpus=1, num_machines=1, opts=None, resume=False, start_iter=-1)
+[05/03 21:52:15] detectron2 INFO: Contents of args.config_file=configs/VAIPE-detection/faster_rcnn_R_50_FPN_ftroi.yaml:
+_BASE_: "../Base-RCNN-FPN.yaml"
+MODEL:
+  WEIGHTS: "checkpoints/vaipe/TFA_fastercnn_base_r50/model_reset_surgery.pth"
+  MASK_ON: False
+  RESNETS:
+    DEPTH: 50
+  ROI_HEADS:
+    NUM_CLASSES: 262
+    FREEZE_FEAT: False
+  ROI_BOX_HEAD:
+    NUM_FC: 2
+    POOLER_RESOLUTION: 7
+  BACKBONE:
+    FREEZE: True
+  PROPOSAL_GENERATOR:
+    FREEZE: True
+DATASETS:
+  TRAIN: ('vaipe_train_all_13shot',)
+  TEST: ('vaipe_test_all',)
+SOLVER:
+  IMS_PER_BATCH: 8
+  BASE_LR: 0.001
+  STEPS: (10000,)
+  MAX_ITER: 15000
+  CHECKPOINT_PERIOD: 5000
+  WARMUP_ITERS: 100
+[05/03 21:52:15] detectron2 INFO: Full config saved to /home/huyen/projects/huypn/fspill/output/config.yaml
+[05/03 21:52:15] d2.utils.env INFO: Using a generated random seed 15972837
